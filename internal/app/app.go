@@ -1,64 +1,25 @@
 package app
 
 import (
-	"dst-run/internal/controller/http"
-	"dst-run/internal/usecase"
-	"dst-run/internal/usecase/driver"
-	"dst-run/internal/usecase/driver/donstarve"
-	"dst-run/internal/usecase/repo"
-	"dst-run/internal/usecase/webapi"
-	"dst-run/pkg/database"
-	"dst-run/pkg/log"
+	"aurora-admin/internal/controller/api/svcapi"
+	"aurora-admin/internal/controller/http"
+	"aurora-admin/internal/plugin/donstarve"
+	"aurora-admin/pkg/database"
+	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
+	"github.com/vksir/vkiss-lib/pkg/log"
 )
 
-func Run() {
+func Run(ctx context.Context, listen string, logger *log.Logger) {
+	dst := donstarve.NewPlugin(database.DB, logger)
+
 	e := gin.Default()
+	services := []svcapi.Interface{dst}
+	http.LoadRouter(e, services)
 
-	dst := donstarve.NewDst(log.Log)
-
-	useCase := usecase.UseCase{
-		DontStarveClusterUseCase: usecase.NewDontStarveClusterUseCase(
-			repo.NewDontStarveClusterRepo(database.DB),
-			driver.NewDontStarveClusterDriver(),
-			log.Log,
-			repo.NewDontStarveModRepo(database.DB),
-		),
-
-		DontStarveConfigUseCase: usecase.NewDontStarveConfigUseCase(
-			repo.NewDontStarveConfigRepo(database.DB),
-			log.Log,
-		),
-
-		DontStarveConsoleUseCase: usecase.NewDontStarveConsoleUseCase(
-			driver.NewDontStarveConsoleDriver(dst),
-			log.Log,
-		),
-
-		DontStarveControlUseCase: usecase.NewDontStarveControlUseCase(
-			driver.NewDontStarveControlDriver(dst, log.Log),
-			repo.NewDontStarveClusterRepo(database.DB),
-			repo.NewDontStarveConfigRepo(database.DB),
-		),
-
-		DontStarveEventUseCase: usecase.NewDontStarveEventUseCase(
-			repo.NewDontStarveEventRepo(database.DB),
-		),
-
-		DontStarveModUseCase: usecase.NewDontStarveModUseCase(
-			repo.NewDontStarveModRepo(database.DB),
-			webapi.NewDontStarveModApi(log.Log),
-		),
-
-		DontStarveStatusUseCase: usecase.NewDontStarveStatusUseCase(
-			driver.NewDontStarveStatusDriver(dst),
-		),
-	}
-
-	http.NewRouter(e, &useCase, log.Log)
-	err := e.Run(viper.GetString("ns.listen"))
+	log.Info("serving", "listen", listen)
+	err := e.Run(listen)
 	if err != nil {
-		log.Fatal("gin run failed: %v", err)
+		log.Error("gin run failed", "err", err)
 	}
 }

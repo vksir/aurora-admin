@@ -1,8 +1,8 @@
 package github
 
 import (
-	"dst-run/internal/comm"
-	"dst-run/pkg/util"
+	"aurora-admin/internal/err"
+	"aurora-admin/pkg/util"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,10 +13,10 @@ func GetLatestRelease(author, repo string) (string, error) {
 
 	resp, err := util.ProxyClient().R().Get(url)
 	if err != nil {
-		return "", comm.NewErr(err)
+		return "", err.NewErr(err)
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return "", comm.NewErr(resp)
+		return "", err.NewErr(resp)
 	}
 	var v LatestReleaseResp
 	if err := json.Unmarshal(resp.Body(), &v); err != nil {

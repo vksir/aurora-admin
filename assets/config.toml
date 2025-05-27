@@ -1,0 +1,4 @@
+listen = "0.0.0.0:5800"
+api_doc_host = "0.0.0.0:5800"
+proxy = ""
+steamcmd = "steamcmd"

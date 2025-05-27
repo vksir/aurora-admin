@@ -7,6 +7,9 @@ import (
 	"path"
 )
 
+//go:embed config.toml
+var DefaultConfig string
+
 //go:embed tmodloader/serverconfig.txt
 var TModLoaderServerConfig string
 

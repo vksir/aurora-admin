@@ -1,8 +1,8 @@
 package database
 
 import (
-	"dst-run/pkg/workspace"
-	"fmt"
+	"aurora-admin/internal/entity/dstety"
+	"github.com/vksir/vkiss-lib/pkg/util/errutil"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	_ "modernc.org/sqlite"
@@ -10,17 +10,23 @@ import (
 
 var DB *gorm.DB
 
-func InitDb() error {
+var migrate = []any{
+	&dstety.DontStarveArchive{},
+	&dstety.DontStarveWorld{},
+	&dstety.DontStarveMod{},
+	&dstety.DontStarveModInArchive{},
+}
+
+func Init(dbPath string) {
 	sql := sqlite.Dialector{
 		DriverName: "sqlite",
-		DSN:        workspace.DBPath,
+		DSN:        dbPath,
 	}
 
-	var err error
-	DB, err = gorm.Open(sql, &gorm.Config{})
-	if err != nil {
-		return fmt.Errorf("gorm open db failed: %v", err)
-	}
+	db, err := gorm.Open(sql, &gorm.Config{})
+	errutil.Check(err)
+	DB = db
 
-	return migrate()
+	err = DB.AutoMigrate(migrate...)
+	errutil.Check(err)
 }

@@ -1,37 +1,51 @@
 package workspace
 
 import (
-	"dst-run/pkg/util"
-	"fmt"
+	"github.com/vksir/vkiss-lib/pkg/util/errutil"
 	"os"
 	"path/filepath"
 )
 
-func Home() string {
-	h, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	return h
+var ws string
+var home string
+
+func Ws() string {
+	return ws
 }
 
-var NSHome = filepath.Join(Home(), "aurora-admin")
+func Home() string {
+	return home
+}
 
-var ProgramDir = filepath.Join(NSHome, "program")
-var ResourceDir = filepath.Join(NSHome, "resource")
-var ConfigDir = filepath.Join(NSHome, "config")
-var DataDir = filepath.Join(NSHome, "data")
-var LogDir = filepath.Join(NSHome, "log")
+func ServiceDir() string {
+	return filepath.Join(ws, "service")
+}
 
-var NSConfigPath = filepath.Join(ConfigDir, "aurora-admin.toml")
-var CachePath = filepath.Join(DataDir, "cache.json")
-var NSLogPath = filepath.Join(LogDir, "aurora-admin.log")
-var DBPath = filepath.Join(DataDir, "aurora-admin.db")
+func LogDir() string {
+	return filepath.Join(ws, "log")
+}
 
-func InitWorkSpace() error {
-	err := util.MkDir(NSHome, ProgramDir, ResourceDir, ConfigDir, DataDir, LogDir)
-	if err != nil {
-		return fmt.Errorf("mkdir failed: %v", err)
+func CachePath() string {
+	return filepath.Join(ws, "cache.json")
+}
+
+func DBPath() string {
+	return filepath.Join(ws, "aurora-admin.db")
+}
+
+func LogPath() string {
+	return filepath.Join(LogDir(), "aurora-admin.log")
+}
+
+func Init(workspace string) {
+	ws = workspace
+	dirs := []string{ws, ServiceDir(), LogDir()}
+	for _, d := range dirs {
+		err := os.MkdirAll(d, 0o755)
+		errutil.Check(err)
 	}
-	return nil
+
+	var err error
+	home, err = os.UserHomeDir()
+	errutil.Check(err)
 }
