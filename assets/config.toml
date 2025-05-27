@@ -1,0 +1,5 @@
+listen = "0.0.0.0:5800"
+api_doc_host = "127.0.0.1:5800"
+steamcmd = "steamcmd"
+log_level = "warn"
+auto_update_interval = 3600

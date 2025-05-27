@@ -1,52 +1,46 @@
 package cache
 
 import (
-	"dst-run/pkg/log"
-	"dst-run/pkg/util"
-	"dst-run/pkg/workspace"
 	"encoding/json"
-	"os"
+	"github.com/vksir/vkiss-lib/pkg/util/errutil"
+	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
 )
 
-var cache = make(map[string]any)
-
-func GetCache(key string) any {
-	return cache[key]
+type cacheDontstarve struct {
+	EnabledArchiveID string `json:"enabled_archive_id"`
+	Token            string `json:"token"`
+	TickRate         int    `json:"tick_rate"`
+	PassWord         string `json:"password"`
 }
 
-func GetCacheSafe(key string) (any, bool) {
-	value, ok := cache[key]
-	return value, ok
+type Cache struct {
+	DontStarve cacheDontstarve `json:"dont_starve"`
 }
 
-func SetCache(key string, value any) {
-	cache[key] = value
-	if err := SaveCache(); err != nil {
-		log.Error("save cache failed: %s", err)
+var gPath string
+var G *Cache
+
+func Save() {
+	content, err := json.Marshal(G)
+	errutil.Check(err)
+	err = fileutil.Write(gPath, content)
+	errutil.Check(err)
+}
+
+func Init(path string) {
+	gPath = path
+	G = &Cache{
+		DontStarve: cacheDontstarve{
+			TickRate: 15,
+		},
 	}
-}
 
-func SaveCache() error {
-	bytes, err := json.Marshal(&cache)
-	if err != nil {
-		return err
-	}
-	return util.WriteFile(workspace.CachePath, bytes)
-}
-
-func InitCache() {
-	cacheBytes, err := os.ReadFile(workspace.CachePath)
-	if os.IsNotExist(err) {
+	if !fileutil.Exist(path) {
 		return
 	}
 
-	if err != nil {
-		panic(err)
-	}
-
-	if err := json.Unmarshal(cacheBytes, &cache); err != nil {
-		if err := util.RmvPath(workspace.CachePath); err != nil {
-			panic(err)
-		}
-	}
+	content, err := fileutil.Read(path)
+	errutil.Check(err)
+	err = json.Unmarshal(content, G)
+	errutil.Check(err)
 }

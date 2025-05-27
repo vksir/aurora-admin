@@ -7,6 +7,9 @@ import (
 	"path"
 )
 
+//go:embed config.toml
+var DefaultConfig string
+
 //go:embed tmodloader/serverconfig.txt
 var TModLoaderServerConfig string
 
@@ -24,6 +27,21 @@ var DontStarveCavesOverride string
 
 //go:embed dontstarve/Cluster_1/Caves/server.ini
 var DontStarveCavesServerIni string
+
+//go:embed dontstarve/template/modoverrides.lua.tmpl
+var DontStarveModOverridesTmpl string
+
+//go:embed dontstarve/template/mods_setup.lua.tmpl
+var DontStarveModsSetupTmpl string
+
+//go:embed dontstarve/template/Cluster/cluster_token.txt.tmpl
+var DontStarveClusterTokenTmpl string
+
+//go:embed dontstarve/template/Cluster/adminlist.txt.tmpl
+var DontStarveAdminListTmpl string
+
+//go:embed web/dist/*
+var StaticFS embed.FS
 
 func Cp(fs embed.FS, src string, dst string) error {
 	stat, err := os.Stat(dst)

@@ -1,10 +1,10 @@
 package github
 
 import (
-	"dst-run/internal/comm"
-	"dst-run/pkg/util"
+	"aurora-admin/pkg/util"
 	"encoding/json"
 	"fmt"
+	"github.com/vksir/vkiss-lib/pkg/util/errutil"
 	"net/http"
 )
 
@@ -13,22 +13,23 @@ func GetLatestRelease(author, repo string) (string, error) {
 
 	resp, err := util.ProxyClient().R().Get(url)
 	if err != nil {
-		return "", comm.NewErr(err)
+		return "", errutil.Wrap(err)
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return "", comm.NewErr(resp)
+		return "", fmt.Errorf("bad request: status_code=%d, body=%s",
+			resp.StatusCode(), string(resp.Body()))
 	}
 	var v LatestReleaseResp
-	if err := json.Unmarshal(resp.Body(), &v); err != nil {
-		return "", err
+	err = json.Unmarshal(resp.Body(), &v)
+	if err != nil {
+		return "", errutil.Wrap(err)
 	}
-
 	return v.TagName, nil
 }
 
 func DownLoadRelease(tag, downloadFile, outputPath string) error {
-	url := fmt.Sprintf("https://github.com/tModLoader/tModLoader/releases/download/%s/%s", tag, downloadFile)
-
+	url := fmt.Sprintf("https://github.com/tModLoader/tModLoader/releases/download/%s/%s",
+		tag, downloadFile)
 	_, err := util.ProxyClient().R().SetOutput(outputPath).Get(url)
 	return err
 }
