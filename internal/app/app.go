@@ -43,7 +43,7 @@ func Run(config *cfg.Config, state *cache.State, db *store.DB) {
 
 	app.dontstarvePlugin = dontstarve.NewPlugin(app.db, app.config, app.state, app.logger)
 
-	app.authApi = authapi.NewApi()
+	app.authApi = authapi.NewApi(app.config)
 	app.dstApi = dstapi.NewApi(app.dontstarvePlugin, app.db)
 	app.pluginApi = svcapi.NewApi()
 

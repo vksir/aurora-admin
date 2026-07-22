@@ -4,6 +4,7 @@ import (
 	"aurora-admin/assets"
 	"aurora-admin/docs"
 	_ "aurora-admin/docs"
+	"aurora-admin/pkg/auth"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -59,23 +60,33 @@ func loadSwaggerRouters(g *gin.RouterGroup, apiDocHost string) {
 }
 
 // Run
-// Swagger spec:
 // @title           Aurora Admin
 // @description 	Aurora Admin API
 // @version     	1.0
 // @host        	0.0.0.0:5800
-// @BasePath    	/
+// @BasePath    	/api/v1
 func serveHttp(a *application) *http.Server {
 	e := gin.New()
 	e.Use(gin.Recovery())
 	e.Use(middleware.Logger(middleware.LoggerConfig{}, a.logger))
 	loadStaticRouters(e, a.config.ApiDocHost)
 
+	// Public routes (no auth)
 	g := e.Group("/api")
 	loadSwaggerRouters(g, a.config.ApiDocHost)
-	a.authApi.Load(g)
-	a.dstApi.Load(g)
-	a.pluginApi.Load(g)
+
+	v1 := g.Group("/v1")
+	{
+		a.authApi.Load(v1)
+	}
+
+	// Protected routes (JWT required)
+	protected := v1.Group("")
+	protected.Use(auth.Middleware(a.config))
+	{
+		a.dstApi.Load(protected)
+		a.pluginApi.Load(protected)
+	}
 
 	listen := a.config.Listen
 	log.InfoF("listen: %s", listen)

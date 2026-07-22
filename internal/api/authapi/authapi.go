@@ -2,37 +2,40 @@ package authapi
 
 import (
 	"aurora-admin/internal/entity/comety"
-	"github.com/gin-gonic/gin"
+	"aurora-admin/pkg/auth"
+	"aurora-admin/pkg/cfg"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Api struct {
+	config *cfg.Config
 }
 
-func NewApi() *Api {
-	return &Api{}
+func NewApi(config *cfg.Config) *Api {
+	return &Api{config: config}
 }
 
 func (a *Api) Load(g *gin.RouterGroup) {
-	g.POST("/auth/login", a.login)
-	g.GET("/auth/codes", a.getAccessCode)
-	g.GET("/user/info", a.getUserInfo)
+	g.POST("/login", a.login)
+}
+
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 func (a *Api) login(c *gin.Context) {
-	// Simple JSON response
-	c.JSON(http.StatusOK, comety.Response{Data: gin.H{
-		"accessToken": "mock token",
-	}})
-}
-
-func (a *Api) getAccessCode(c *gin.Context) {
-	c.JSON(http.StatusOK, comety.Response{Data: []string{}})
-}
-
-func (a *Api) getUserInfo(c *gin.Context) {
-	c.JSON(http.StatusOK, comety.Response{Data: gin.H{
-		"roles":    "super",
-		"realName": "Vkiss",
-	}})
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
+		return
+	}
+	token, err := auth.Login(req.Username, req.Password, a.config)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, comety.Response{Message: "invalid credentials"})
+		return
+	}
+	c.JSON(http.StatusOK, comety.Response{Data: gin.H{"accessToken": token}})
 }

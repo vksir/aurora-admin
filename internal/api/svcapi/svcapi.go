@@ -9,81 +9,62 @@ import (
 	"aurora-admin/pkg/service"
 )
 
-type Api struct {
-}
+type Api struct{}
 
 func NewApi() *Api {
 	return &Api{}
 }
 
 func (a *Api) Load(g *gin.RouterGroup) {
-	g.GET("/:service/status", a.GetStatus)
-	g.POST("/:service/:action", a.CreateControl)
+	dst := g.Group("/dst/service")
+	{
+		dst.GET("/status", a.getStatus("dontstarve"))
+		dst.POST("/start", a.control("dontstarve", "start"))
+		dst.POST("/stop", a.control("dontstarve", "stop"))
+		dst.POST("/restart", a.control("dontstarve", "restart"))
+		dst.POST("/install", a.control("dontstarve", "install"))
+		dst.POST("/uninstall", a.control("dontstarve", "uninstall"))
+		dst.POST("/update", a.control("dontstarve", "update"))
+	}
 }
 
-// GetStatus
-// @Summary			获取状态
-// @Tags			service_status
-// @Accept			json
-// @Produce			json
-// @Param			service path string true "service" Enums(dontstarve)
-// @Success			200 {object} comety.Status{status=string} "status: Inactive, Active, Starting, Stopping, WaitingActive, Abnormal"
-// @Failure			500 {object} any
-// @Router			/api/{service}/status [get]
-func (a *Api) GetStatus(c *gin.Context) {
-	name := c.Param("service")
-	svc, ok := service.Lookup(name)
-	if !ok {
-		msg := fmt.Sprintf("svc %s not found", name)
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: msg})
-		return
+func (a *Api) getStatus(name string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		svc, ok := service.Lookup(name)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, comety.Response{Message: fmt.Sprintf("svc %s not found", name)})
+			return
+		}
+		c.JSON(http.StatusOK, comety.Response{Data: comety.Status{Status: svc.Status().String()}})
 	}
-
-	status := comety.Status{Status: svc.Status().String()}
-	c.JSON(http.StatusOK, comety.Response{Data: status})
 }
 
-// CreateControl
-// @Summary			服务控制
-// @Tags			service_control
-// @Accept			json
-// @Produce			json
-// @Param			service path string true "service" Enums(dontstarve)
-// @Param			action path string true "action" Enums(start, stop, restart, install, uninstall, update)
-// @Success			200 {object} comety.Response
-// @Failure			500 {object} any
-// @Router			/api/{service}/{action} [post]
-func (a *Api) CreateControl(c *gin.Context) {
-	name := c.Param("service")
-	action := c.Param("action")
-	svc, ok := service.Lookup(name)
-	if !ok {
-		msg := fmt.Sprintf("plugin %s not found", name)
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: msg})
-		return
+func (a *Api) control(name, action string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		svc, ok := service.Lookup(name)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, comety.Response{Message: fmt.Sprintf("svc %s not found", name)})
+			return
+		}
+		var err error
+		switch action {
+		case "start":
+			err = svc.Start(c.Request.Context())
+		case "stop":
+			err = svc.Stop(c.Request.Context())
+		case "restart":
+			err = svc.Restart(c.Request.Context())
+		case "install":
+			err = svc.Install(c.Request.Context())
+		case "uninstall":
+			err = svc.Uninstall(c.Request.Context())
+		case "update":
+			err = svc.Update(c.Request.Context())
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, comety.Response{})
 	}
-
-	var err error
-	switch action {
-	case "start":
-		err = svc.Start(c.Request.Context())
-	case "stop":
-		err = svc.Stop(c.Request.Context())
-	case "restart":
-		err = svc.Restart(c.Request.Context())
-	case "install":
-		err = svc.Install(c.Request.Context())
-	case "uninstall":
-		err = svc.Uninstall(c.Request.Context())
-	case "update":
-		err = svc.Update(c.Request.Context())
-	default:
-		err = fmt.Errorf("invalid action: %s", action)
-	}
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, comety.Response{})
 }

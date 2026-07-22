@@ -13,6 +13,8 @@ type Config struct {
 	LogLevel           string `toml:"log_level"`
 	AutoUpdateInterval int    `toml:"auto_update_interval"`
 	Proxy              string `toml:"proxy"`
+	Username           string `toml:"username"`
+	Password           string `toml:"password"`
 }
 
 func Init(path string, defaultConfig string) (*Config, error) {
@@ -22,6 +24,8 @@ func Init(path string, defaultConfig string) (*Config, error) {
 		SteamCmdPath: "steamcmd",
 		LogLevel:     "warn",
 		Proxy:        "",
+		Username:     "admin",
+		Password:     "admin",
 	}
 
 	if !fileutil.Exist(path) {
