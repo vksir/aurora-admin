@@ -22,7 +22,7 @@ import (
 	"aurora-admin/pkg/workspace"
 )
 
-//go:embed service.tmpl
+//go:embed assets/service.tmpl
 var serviceTmpl string
 
 type systemdService struct {
