@@ -6,3 +6,4 @@ auto_update_interval = 3600
 proxy = ""
 username = "admin"
 password = "admin"
+jwt_secret = "change-me-in-production"

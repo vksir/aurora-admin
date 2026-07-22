@@ -28,7 +28,7 @@ func Login(username, password string, config *cfg.Config) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(config.Password))
+	return token.SignedString([]byte(config.JWTSecret))
 }
 
 func Middleware(config *cfg.Config) gin.HandlerFunc {
@@ -42,7 +42,7 @@ func Middleware(config *cfg.Config) gin.HandlerFunc {
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
-			return []byte(config.Password), nil
+			return []byte(config.JWTSecret), nil
 		})
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "invalid token"})

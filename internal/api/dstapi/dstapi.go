@@ -257,117 +257,6 @@ func (d *Api) UploadUpdateArchive(c *gin.Context) {
 	c.JSON(http.StatusOK, comety.Response{Data: res})
 }
 
-// UploadCreateEnableArchive
-// @Summary			上传、创建并启用存档
-// @Tags			dontstarve_archive_enable
-// @Accept			multipart/form-data
-// @Produce			json
-// @Param			file formData file true "file"
-// @Success			200 {object} comety.Response{data=ent.DontStarveArchive}
-// @Failure			500 {object} any
-// @Router			/api/v1/dst/archives/{id}/enable [post]
-func (d *Api) UploadCreateEnableArchive(c *gin.Context) {
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
-		return
-	}
-
-	file, err := fileHeader.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-	defer log.Close(file)
-
-	res, err := d.plugin.UploadCreateArchive(c, file, fileHeader.Filename)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-
-	conf := d.plugin.GetConfig(c)
-	conf.EnabledArchiveId = res.ID
-	d.plugin.UpdateConfig(c, conf)
-
-	err = d.plugin.Service().Restart(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, comety.Response{Data: res})
-}
-
-// UploadUpdateEnabledArchive
-// @Summary			上传并更新当前启用的存档
-// @Tags			dontstarve_archive_enable
-// @Accept			multipart/form-data
-// @Produce			json
-// @Param			file formData file true "file"
-// @Success			200 {object} comety.Response{data=ent.DontStarveArchive}
-// @Failure			500 {object} any
-// @Router			/api/v1/dst/archives/enabled/upload [put]
-func (d *Api) UploadUpdateEnabledArchive(c *gin.Context) {
-	conf := d.plugin.GetConfig(c)
-	if conf.EnabledArchiveId == "" {
-		c.JSON(http.StatusBadRequest, comety.Response{Message: "no enabled archive"})
-		return
-	}
-
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
-		return
-	}
-
-	file, err := fileHeader.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-	defer log.Close(file)
-
-	res, err := d.plugin.UploadUpdateArchive(c, file, conf.EnabledArchiveId, fileHeader.Filename)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-
-	err = d.plugin.Service().Restart(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, comety.Response{Data: res})
-}
-
-// DownloadCurrentArchive
-// @Summary			下载当前启用的存档
-// @Tags			dontstarve_archive_enable
-// @Accept			json
-// @Produce			octet-stream
-// @Success			200 {file} file
-// @Failure			500 {object} any
-// @Router			/api/v1/dst/archives/enabled/download [get]
-func (d *Api) DownloadCurrentArchive(c *gin.Context) {
-	conf := d.plugin.GetConfig(c)
-	if conf.EnabledArchiveId == "" {
-		c.JSON(http.StatusBadRequest, comety.Response{Message: "no enabled archive"})
-		return
-	}
-
-	c.Header("Content-Disposition", "attachment; filename="+conf.EnabledArchiveId+".zip")
-	c.Header("Content-Type", "application/zip")
-
-	err := d.plugin.DownloadArchive(c, conf.EnabledArchiveId, c.Writer)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
-}
-
 // DownloadArchive
 // @Summary			下载存档
 // @Tags			dontstarve_archive_transfer
@@ -627,12 +516,6 @@ func (d *Api) EnableArchive(c *gin.Context) {
 	conf := d.plugin.GetConfig(c)
 	conf.EnabledArchiveId = id
 	d.plugin.UpdateConfig(c, conf)
-
-	err := d.plugin.Service().Restart(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
-		return
-	}
 	c.JSON(http.StatusOK, comety.Response{})
 }
 

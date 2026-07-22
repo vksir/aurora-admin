@@ -15,6 +15,7 @@ type Config struct {
 	Proxy              string `toml:"proxy"`
 	Username           string `toml:"username"`
 	Password           string `toml:"password"`
+	JWTSecret          string `toml:"jwt_secret"`
 }
 
 func Init(path string, defaultConfig string) (*Config, error) {
@@ -26,6 +27,7 @@ func Init(path string, defaultConfig string) (*Config, error) {
 		Proxy:        "",
 		Username:     "admin",
 		Password:     "admin",
+		JWTSecret:    "change-me-in-production",
 	}
 
 	if !fileutil.Exist(path) {
