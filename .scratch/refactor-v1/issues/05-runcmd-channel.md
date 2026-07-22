@@ -1,15 +1,14 @@
 # 05 — RunCmd：channel 同步替代 sleep + regex
 
-**What to build:** SubProcess 内部增加 pending command channel。向游戏服发命令时，通过 channel 匹配请求和响应，替代 `time.Sleep(500ms)` 硬等待和 `BEGIN_CMD` 标记字符串 + 正则截取。
+**What to build:** SubProcess 内部增加 SendCommand 方法，通过临时 output collector + channel + timeout 替代 `time.Sleep(500ms)` 和 `[BEGIN_CMD]...[END_CMD]` 标记。
 
 **Blocked by:** None — 和其他 ticket 独立。
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] SubProcess 内部新增 pending command channel 和请求-响应匹配逻辑
-- [ ] RunCmd 改为通过 channel 发送命令、等待结果
-- [ ] 删除 `time.Sleep(500ms)` 硬等待
-- [ ] 删除 `[BEGIN_CMD]...[END_CMD]` 标记字符串和正则截取
-- [ ] `GetPlayers` 返回正确玩家列表
-- [ ] `Announce` 公告成功发送
-- [ ] `Regenerate` / `Rollback` 命令正确执行
+- [x] SubProcess 新增 `SendCommand` 方法，使用临时 output collector + timer timeout
+- [x] RunCmd 改为 delegate 到 `process.SendCommand(cmd, DefaultCommandTimeout)`
+- [x] 删除 `time.Sleep(500ms)` 硬等待
+- [x] 删除 `[BEGIN_CMD]...[END_CMD]` 标记字符串和正则截取
+- [x] 删除 plugin.go 中未使用的 `regexp`、`strings` import
+- [x] `GetPlayers`/`Announce`/`Regenerate`/`Rollback` 通过 RunCmd 自动受益
