@@ -132,7 +132,7 @@ func (h *autoupdateHelper) notifyForceUpdate(ctx context.Context) {
 }
 
 func readCurrentBuildID() (int, error) {
-	manifestPath := newPathHelper().AppManifestPath()
+	manifestPath := appManifestPath()
 	content, err := fileutil.Read(manifestPath)
 	if err != nil {
 		return 0, errutil.Wrap(err)

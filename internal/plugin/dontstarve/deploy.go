@@ -23,28 +23,21 @@ type deployer struct {
 	logger *log.Logger
 	state  *cache.State
 	archID string
-	ph     *pathHelper
-	cph    *clusterPathHelper
 }
 
 func newDeployer(archID string, db *store.DB, state *cache.State, logger *log.Logger) *deployer {
-	d := &deployer{
+	return &deployer{
 		db:     db,
 		state:  state,
 		archID: archID,
 		logger: logger,
 	}
-	d.ph = newPathHelper()
-	d.cph = newClusterPathHelper(d.ph, archID)
-	return d
 }
 
-// textTemplate 本地模板接口，替代原 pkg/template 浅包装
 type textTemplate interface {
 	Template() string
 }
 
-// executeTemplates 内联原 template.ExecuteFiles 逻辑
 func executeTemplates(m map[string]textTemplate) error {
 	for path, t := range m {
 		tmpl, err := template.New("").Parse(t.Template())
@@ -80,9 +73,9 @@ func (d *deployer) DeployBeforeStart(ctx context.Context) error {
 	}
 
 	err = executeTemplates(map[string]textTemplate{
-		d.ph.ModSetupPath():     &deployModSetup{Mods: arch.Mods},
-		d.cph.ClusterTokenTxt(): &deployToken{Token: d.state.DontStarve.Token},
-		d.cph.AdminListTxt():    &deployAdmin{Admin: admins},
+		modSetupPath():              &deployModSetup{Mods: arch.Mods},
+		clusterTokenTxt(d.archID):   &deployToken{Token: d.state.DontStarve.Token},
+		adminListTxt(d.archID):      &deployAdmin{Admin: admins},
 	})
 	if err != nil {
 		return errutil.Wrap(err)
@@ -101,7 +94,7 @@ func (d *deployer) DeployCluster(ctx context.Context) error {
 		return errutil.Wrap(err)
 	}
 
-	err = fileutil.MkDir(d.cph.Root())
+	err = fileutil.MkDir(clusterRoot(d.archID))
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -122,9 +115,9 @@ func (d *deployer) DeployCluster(ctx context.Context) error {
 
 func (d *deployer) deployClusterIni(ctx context.Context, arch *store.Archive) error {
 	clusterConfigBytes := []byte(assets.DontStarveClusterIni)
-	if fileutil.Exist(d.cph.ClusterIni()) {
+	if fileutil.Exist(clusterIni(d.archID)) {
 		var err error
-		clusterConfigBytes, err = fileutil.Read(d.cph.ClusterIni())
+		clusterConfigBytes, err = fileutil.Read(clusterIni(d.archID))
 		if err != nil {
 			return errutil.Wrap(err)
 		}
@@ -151,7 +144,7 @@ func (d *deployer) deployClusterIni(ctx context.Context, arch *store.Archive) er
 	conf.Section("GAMEPLAY").Key("Pvp").
 		SetValue(convutil.String(arch.Pvp))
 
-	err = conf.SaveTo(d.cph.ClusterIni())
+	err = conf.SaveTo(clusterIni(d.archID))
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -159,40 +152,57 @@ func (d *deployer) deployClusterIni(ctx context.Context, arch *store.Archive) er
 }
 
 func (d *deployer) deployWorld(ctx context.Context, arch *store.Archive, world *dstety.DontStarveWorld) error {
-	sph, err := d.cph.Shard(world.Type)
+	shard, err := worldTypeShard(world.Type)
+	if err != nil {
+		return errutil.Wrap(err)
+	}
+	root, err := shardRoot(d.archID, shard)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
 
-	err = fileutil.MkDir(sph.Root())
+	err = fileutil.MkDir(root)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
 
-	err = fileutil.Write(sph.ServerIni(), []byte(world.ServerConfig))
+	serverIni, err := shardServerIni(d.archID, shard)
+	if err != nil {
+		return errutil.Wrap(err)
+	}
+	err = fileutil.Write(serverIni, []byte(world.ServerConfig))
 	if err != nil {
 		return errutil.Wrap(err)
 	}
 
-	err = fileutil.Write(sph.WorldOverrideLua(), []byte(world.WorldOverride))
+	worldOverride, err := shardWorldOverrideLua(d.archID, shard)
+	if err != nil {
+		return errutil.Wrap(err)
+	}
+	err = fileutil.Write(worldOverride, []byte(world.WorldOverride))
 	if err != nil {
 		return errutil.Wrap(err)
 	}
 
-	err = d.deployMod(ctx, arch, sph)
+	err = d.deployMod(ctx, arch, shard)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
 	return nil
 }
 
-func (d *deployer) deployMod(ctx context.Context, arch *store.Archive, sph *shardPathHelper) error {
+func (d *deployer) deployMod(ctx context.Context, arch *store.Archive, shard string) error {
 	var rawConfigs []string
 	for _, m := range arch.Mods {
 		rawConfigs = append(rawConfigs, m.RawConfig)
 	}
 	modOverridesContent := genModOverrideContent(rawConfigs)
-	err := fileutil.Write(sph.ModOverrideLua(), []byte(modOverridesContent))
+
+	modOverride, err := shardModOverrideLua(d.archID, shard)
+	if err != nil {
+		return errutil.Wrap(err)
+	}
+	err = fileutil.Write(modOverride, []byte(modOverridesContent))
 	if err != nil {
 		return errutil.Wrap(err)
 	}

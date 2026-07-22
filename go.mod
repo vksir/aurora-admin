@@ -13,7 +13,6 @@ require (
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.1
 	github.com/urfave/cli/v3 v3.7.0
-	github.com/yuin/gopher-lua v1.1.1
 	gopkg.in/ini.v1 v1.67.0
 	modernc.org/sqlite v1.38.0
 )

@@ -1,7 +1,7 @@
 package dontstarve
 
 import (
-	"aurora-admin/internal/plugin/steamcmd"
+	"aurora-admin/pkg/steam"
 	"aurora-admin/pkg/workspace"
 	"fmt"
 	"path/filepath"
@@ -24,103 +24,90 @@ const (
 	AutoupdateNotifyInterval  = 300
 )
 
-type pathHelper struct {
-	home   string
-	svcDir string
+// --- path functions (replaces pathHelper struct hierarchy) ---
+
+func programDir() string {
+	return filepath.Join(workspace.ServiceDir(), PluginName)
 }
 
-func newPathHelper() *pathHelper {
-	return &pathHelper{
-		home:   fileutil.Home,
-		svcDir: workspace.ServiceDir(),
-	}
-}
-
-func (p *pathHelper) ProgramDir() string {
-	return filepath.Join(p.svcDir, PluginName)
-}
-
-func (p *pathHelper) ClusterDir() string {
-	dir, err := fileutil.MkdirAndReturn(filepath.Join(p.home, ".klei/DoNotStarveTogether"))
+func clusterDir() string {
+	dir, err := fileutil.MkdirAndReturn(filepath.Join(fileutil.Home, ".klei/DoNotStarveTogether"))
 	if err != nil {
 		log.Error("MkdirAndReturn", "err", err)
 	}
 	return dir
 }
 
-func (p *pathHelper) DstServPath() string {
-	return filepath.Join(p.ProgramDir(), "bin64/dontstarve_dedicated_server_nullrenderer_x64")
+func dstServPath() string {
+	return filepath.Join(programDir(), "bin64/dontstarve_dedicated_server_nullrenderer_x64")
 }
 
-func (p *pathHelper) AppManifestPath() string {
-	return filepath.Join(p.ProgramDir(), "steamapps/appmanifest_343050.acf")
+func appManifestPath() string {
+	return filepath.Join(programDir(), "steamapps/appmanifest_343050.acf")
 }
 
-func (p *pathHelper) ModSetupPath() string {
-	return filepath.Join(p.ProgramDir(), "mods/dedicated_server_mods_setup.lua")
+func modSetupPath() string {
+	return filepath.Join(programDir(), "mods/dedicated_server_mods_setup.lua")
 }
 
-func (p *pathHelper) UgcModDir() string {
-	return steamcmd.WorkshopItemPath(AppId, "")
+func ugcModDir() string {
+	return steam.WorkshopItemPath(AppId, "")
 }
 
-type clusterPathHelper struct {
-	archID string
-	root   string
+func clusterRoot(archID string) string {
+	return filepath.Join(clusterDir(), archID)
 }
 
-func newClusterPathHelper(ph *pathHelper, archId string) *clusterPathHelper {
-	cp := &clusterPathHelper{
-		archID: archId,
-		root:   filepath.Join(ph.ClusterDir(), archId),
-	}
-	return cp
+func clusterIni(archID string) string {
+	return filepath.Join(clusterRoot(archID), "cluster.ini")
 }
 
-func (p *clusterPathHelper) SetRoot(path string) *clusterPathHelper {
-	p.root = path
-	return p
+func adminListTxt(archID string) string {
+	return filepath.Join(clusterRoot(archID), "adminlist.txt")
 }
 
-func (p *clusterPathHelper) Root() string {
-	return p.root
+func clusterTokenTxt(archID string) string {
+	return filepath.Join(clusterRoot(archID), "cluster_token.txt")
 }
 
-func (p *clusterPathHelper) ClusterIni() string {
-	return filepath.Join(p.root, "cluster.ini")
-}
-
-func (p *clusterPathHelper) AdminListTxt() string {
-	return filepath.Join(p.root, "adminlist.txt")
-}
-
-func (p *clusterPathHelper) ClusterTokenTxt() string {
-	return filepath.Join(p.root, "cluster_token.txt")
-}
-
-func (p *clusterPathHelper) Shard(shard string) (*shardPathHelper, error) {
+func shardRoot(archID, shard string) (string, error) {
 	if shard != "Master" && shard != "Caves" {
-		return nil, fmt.Errorf("invalid shard %s", shard)
+		return "", fmt.Errorf("invalid shard %s", shard)
 	}
-	return &shardPathHelper{root: filepath.Join(p.root, shard)}, nil
+	return filepath.Join(clusterRoot(archID), shard), nil
 }
 
-type shardPathHelper struct {
-	root string
+func shardWorldOverrideLua(archID, shard string) (string, error) {
+	root, err := shardRoot(archID, shard)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "leveldataoverride.lua"), nil
 }
 
-func (p *shardPathHelper) Root() string {
-	return p.root
+func shardModOverrideLua(archID, shard string) (string, error) {
+	root, err := shardRoot(archID, shard)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "modoverrides.lua"), nil
 }
 
-func (p *shardPathHelper) WorldOverrideLua() string {
-	return filepath.Join(p.root, "leveldataoverride.lua")
+func shardServerIni(archID, shard string) (string, error) {
+	root, err := shardRoot(archID, shard)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "server.ini"), nil
 }
 
-func (p *shardPathHelper) ModOverrideLua() string {
-	return filepath.Join(p.root, "modoverrides.lua")
-}
-
-func (p *shardPathHelper) ServerIni() string {
-	return filepath.Join(p.root, "server.ini")
+func worldTypeShard(worldType string) (string, error) {
+	switch worldType {
+	case "Master":
+		return ShardMaster, nil
+	case "Caves":
+		return ShardCaves, nil
+	default:
+		return "", fmt.Errorf("unknown world type: %s", worldType)
+	}
 }

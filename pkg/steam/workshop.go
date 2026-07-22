@@ -1,4 +1,4 @@
-package steamcmd
+package steam
 
 import (
 	"aurora-admin/pkg/workspace"

@@ -1,7 +1,6 @@
 package dontstarve
 
 import (
-	"aurora-admin/internal/entity/dstety"
 	"aurora-admin/internal/store"
 	"context"
 	"database/sql"
@@ -14,7 +13,6 @@ import (
 	"aurora-admin/pkg/log"
 	"aurora-admin/pkg/util/errutil"
 	"aurora-admin/pkg/steam"
-	lua "github.com/yuin/gopher-lua"
 )
 
 func (p *Plugin) createModFromModOverrides(ctx context.Context, content []byte) ([]*store.Mod, error) {
@@ -138,137 +136,49 @@ func fetchModInfoFromAPI(workshopIDs []string) (map[string]steam.Publishedfilede
 	return workshopID2Info, err
 }
 
-func fetchModInfoFromLua(content []byte, mod *dstety.DontStarveMod) error {
-	L := lua.NewState()
-	defer L.Close()
-	err := L.DoString(string(content))
-	if err != nil {
-		return errutil.Wrap(err)
-	}
-
-	description := L.GetGlobal("description")
-	if description.Type() == lua.LTString {
-		mod.Description = description.String()
-	}
-	author := L.GetGlobal("author")
-	if author.Type() == lua.LTString {
-		mod.Author = author.String()
-	}
-	version := L.GetGlobal("version")
-	if version.Type() == lua.LTString {
-		mod.Version = version.String()
-	}
-
-	mod.Config = make([]dstety.DontStarveModConfig, 0)
-	configs := L.GetGlobal("configuration_options")
-	if configs.Type() == lua.LTTable {
-		configs.(*lua.LTable).ForEach(func(_, configLV lua.LValue) {
-			if configLV.Type() == lua.LTTable {
-				configTable := configLV.(*lua.LTable)
-
-				var config dstety.DontStarveModConfig
-				name := configTable.RawGetString("name")
-				if name.Type() == lua.LTString {
-					config.Name = name.String()
-				}
-				label := configTable.RawGetString("label")
-				if label.Type() == lua.LTString {
-					config.Label = label.String()
-				}
-				hover := configTable.RawGetString("hover")
-				if hover.Type() == lua.LTString {
-					config.Hover = hover.String()
-				}
-
-				options := configTable.RawGetString("options")
-				if options.Type() == lua.LTTable {
-					options.(*lua.LTable).ForEach(func(_, optionLV lua.LValue) {
-						if optionLV.Type() == lua.LTTable {
-							optionTable := optionLV.(*lua.LTable)
-
-							var option dstety.DontStarveModConfigOption
-							opDescription := optionTable.RawGetString("description")
-							if opDescription.Type() == lua.LTString {
-								option.Description = opDescription.String()
-							}
-							opHover := optionTable.RawGetString("hover")
-							if opHover.Type() == lua.LTString {
-								option.Hover = opHover.String()
-							}
-							data := optionTable.RawGetString("data")
-							option.LuaValue = dstety.NewLuaValue(data)
-
-							config.Option = append(config.Option, option)
-						}
-					})
-				}
-
-				// 查找 default 值，如果找不到，则将第一个选项设置为 default 值
-				defaultV := configTable.RawGetString("default")
-				defaultLuaValue := dstety.NewLuaValue(defaultV)
-				hasFoundDefault := false
-				for i := range config.Option {
-					if config.Option[i].LuaValue == defaultLuaValue {
-						config.Option[i].Default = true
-						hasFoundDefault = true
-					}
-				}
-				if !hasFoundDefault && len(config.Option) > 0 {
-					log.Error("not found default option, set first option as default", "mod", mod.Name, "config", config.Name)
-					config.Option[0].Default = true
-				}
-
-				mod.Config = append(mod.Config, config)
-			}
-		})
-	}
-	return nil
-}
-
 func parseModLuaByRegex(content string) (map[string]string, error) {
-	L := lua.NewState()
-	defer L.Close()
-	err := L.DoString(content)
-	if err != nil {
-		return nil, errutil.Wrap(err)
-	}
+	result := make(map[string]string)
 
-	enableModIDs := make(map[string]struct{})
-	modIDRegex := regexp.MustCompile(`\d+`)
-	data := L.Get(-1).(*lua.LTable)
-	L.Pop(1)
-	data.ForEach(func(workShopId lua.LValue, config lua.LValue) {
-		modId := modIDRegex.FindString(workShopId.String())
-		if modId == "" {
-			log.Error("regex mod id failed", "workshop_id_string", workShopId.String())
-			return
+	// 匹配 ["workshop-XXXX"] = { 开始位置，支持单引号或双引号
+	modEntryRegex := regexp.MustCompile(`\[["']workshop-(\d+)["']\]\s*=\s*\{`)
+	enabledRegex := regexp.MustCompile(`\benabled\s*=\s*true`)
+
+	matches := modEntryRegex.FindAllStringSubmatchIndex(content, -1)
+
+	for _, match := range matches {
+		workshopID := content[match[2]:match[3]]
+
+		// match[1] 是完整匹配的结束位置，紧跟在 { 之后
+		// 所以 { 的位置是 match[1] - 1
+		openBracePos := match[1] - 1
+
+		// 括号计数找到匹配的 }
+		depth := 0
+		closeBracePos := -1
+		for i := openBracePos; i < len(content); i++ {
+			if content[i] == '{' {
+				depth++
+			} else if content[i] == '}' {
+				depth--
+				if depth == 0 {
+					closeBracePos = i
+					break
+				}
+			}
 		}
 
-		configTable := config.(*lua.LTable)
-		enabled := configTable.RawGetString("enabled").(lua.LBool)
-		if enabled {
-			enableModIDs[modId] = struct{}{}
-		}
-	})
-
-	modIDRegex = regexp.MustCompile(`(?s)\["workshop-(\d+)"]=\{.*?\{.*?}.*?enabled.*?}`)
-	modIDs := modIDRegex.FindAllStringSubmatch(content, -1)
-	configRegex := regexp.MustCompile(`(?s)\["workshop-\d+"]=\{.*?\{.*?}.*?enabled.*?}`)
-	configs := configRegex.FindAllString(content, -1)
-	if len(modIDs) != len(configs) {
-		return nil, fmt.Errorf("regex not match")
-	}
-
-	modID2Config := make(map[string]string)
-	for i := range modIDs {
-		id := modIDs[i][1]
-		_, ok := enableModIDs[id]
-		if !ok {
+		if closeBracePos < 0 {
 			continue
 		}
-		modID2Config[id] = configs[i]
+
+		block := strings.TrimSpace(content[match[0]:closeBracePos+1])
+
+		if enabledRegex.MatchString(block) {
+			result[workshopID] = block
+		}
 	}
-	return modID2Config, nil
+
+	return result, nil
 }
 
 func genModOverrideContent(rawConfigs []string) string {

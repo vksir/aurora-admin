@@ -10,9 +10,6 @@ import (
 //go:embed config.toml
 var DefaultConfig string
 
-//go:embed tmodloader/serverconfig.txt
-var TModLoaderServerConfig string
-
 //go:embed dontstarve/Cluster_1/cluster.ini
 var DontStarveClusterIni string
 

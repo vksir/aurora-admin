@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"io"
 	"os"
+	"path/filepath"
 
 	"aurora-admin/pkg/log"
 	"aurora-admin/pkg/util/errutil"
@@ -15,9 +16,7 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-const (
-	iconEye = "󰀅"
-)
+const iconEye = "󰀅"
 
 func (p *Plugin) UploadCreateArchive(ctx context.Context, r io.Reader, archName string) (*store.Archive, error) {
 	var arch *store.Archive
@@ -54,8 +53,7 @@ func (p *Plugin) UploadUpdateArchive(ctx context.Context, r io.Reader, id string
 func (p *Plugin) uploadArchive(ctx context.Context, r io.Reader, archName string,
 	callback func(ctx context.Context, path string, fileName string) error) error {
 
-	ph := newPathHelper()
-	tempDir, err := fileutil.NewTempDir(ph.ClusterDir(), "archive-*")
+	tempDir, err := fileutil.NewTempDir(clusterDir(), "archive-*")
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -93,12 +91,12 @@ func (p *Plugin) CreateArchive(ctx context.Context) (*store.Archive, error) {
 		Pvp:                false,
 		World: []dstety.DontStarveWorld{
 			{
-				Type:          dstety.WorldTypeMaster,
+				Type:          "Master",
 				ServerConfig:  assets.DontStarveMasterServerIni,
 				WorldOverride: assets.DontStarveMasterOverride,
 			},
 			{
-				Type:          dstety.WorldTypeCaves,
+				Type:          "Caves",
 				ServerConfig:  assets.DontStarveCavesServerIni,
 				WorldOverride: assets.DontStarveCavesOverride,
 			},
@@ -123,12 +121,12 @@ func (p *Plugin) DownloadArchive(ctx context.Context, id string, w io.Writer) er
 		return errutil.Wrap(err)
 	}
 
-	cph := newClusterPathHelper(p.ph, id)
-	if !fileutil.Exist(cph.Root()) {
-		return errutil.WrapNotFound(cph.Root())
+	root := clusterRoot(id)
+	if !fileutil.Exist(root) {
+		return errutil.WrapNotFound(root)
 	}
 
-	err = fileutil.ZipToWriter(cph.Root(), w)
+	err = fileutil.ZipToWriter(root, w)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -136,8 +134,7 @@ func (p *Plugin) DownloadArchive(ctx context.Context, id string, w io.Writer) er
 }
 
 func (p *Plugin) DeleteArchive(ctx context.Context, id string) error {
-	cph := newClusterPathHelper(p.ph, id)
-	err := fileutil.Remove(cph.Root())
+	err := fileutil.Remove(clusterRoot(id))
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -181,8 +178,7 @@ func (p *Plugin) createArchiveFromDisk(ctx context.Context, path string, archNam
 			return errutil.Wrap(err)
 		}
 
-		cph := newClusterPathHelper(p.ph, arch.ID).SetRoot(path)
-		err = p.loadArchive(ctx, cph, arch)
+		err = p.loadArchive(ctx, path, arch)
 		if err != nil {
 			return errutil.Wrap(err)
 		}
@@ -194,8 +190,7 @@ func (p *Plugin) createArchiveFromDisk(ctx context.Context, path string, archNam
 
 		newArch = arch
 
-		newCph := newClusterPathHelper(p.ph, arch.ID)
-		err = fileutil.Mv(cph.Root(), newCph.Root())
+		err = fileutil.Mv(path, clusterRoot(arch.ID))
 		if err != nil {
 			return errutil.Wrap(err)
 		}
@@ -217,8 +212,7 @@ func (p *Plugin) updateArchiveFromDisk(ctx context.Context, path string, archID 
 		return nil, errutil.Wrap(err)
 	}
 
-	cph := newClusterPathHelper(p.ph, arch.ID).SetRoot(path)
-	err = p.loadArchive(ctx, cph, arch)
+	err = p.loadArchive(ctx, path, arch)
 	if err != nil {
 		return nil, errutil.Wrap(err)
 	}
@@ -230,17 +224,11 @@ func (p *Plugin) updateArchiveFromDisk(ctx context.Context, path string, archID 
 	return newArch, nil
 }
 
-func (p *Plugin) loadArchive(ctx context.Context, cph *clusterPathHelper, arch *store.Archive) error {
-	master, err := cph.Shard(dstety.WorldTypeMaster)
-	if err != nil {
-		return errutil.Wrap(err)
-	}
-	caves, err := cph.Shard(dstety.WorldTypeCaves)
-	if err != nil {
-		return errutil.Wrap(err)
-	}
+func (p *Plugin) loadArchive(ctx context.Context, rootDir string, arch *store.Archive) error {
+	archID := arch.ID
 
-	rawModBytes, err := fileutil.Read(master.ModOverrideLua())
+	masterModOverride := filepath.Join(rootDir, "Master", "modoverrides.lua")
+	rawModBytes, err := fileutil.Read(masterModOverride)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -250,33 +238,38 @@ func (p *Plugin) loadArchive(ctx context.Context, cph *clusterPathHelper, arch *
 	}
 	arch.Mods = mods
 
-	masterWorldOverridesBytes, err := fileutil.Read(master.WorldOverrideLua())
+	masterOverride := filepath.Join(rootDir, "Master", "leveldataoverride.lua")
+	masterWorldOverridesBytes, err := fileutil.Read(masterOverride)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
-	masterServerConfigBytes, err := fileutil.Read(master.ServerIni())
+	masterServerIni := filepath.Join(rootDir, "Master", "server.ini")
+	masterServerConfigBytes, err := fileutil.Read(masterServerIni)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
-	cavesWorldOverridesBytes, err := fileutil.Read(caves.WorldOverrideLua())
+	cavesOverride := filepath.Join(rootDir, "Caves", "leveldataoverride.lua")
+	cavesWorldOverridesBytes, err := fileutil.Read(cavesOverride)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
-	cavesServerConfigBytes, err := fileutil.Read(caves.ServerIni())
+	cavesServerIni := filepath.Join(rootDir, "Caves", "server.ini")
+	cavesServerConfigBytes, err := fileutil.Read(cavesServerIni)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
+
 	arch.World = []dstety.DontStarveWorld{{
-		Type:          dstety.WorldTypeMaster,
+		Type:          "Master",
 		WorldOverride: string(masterWorldOverridesBytes),
 		ServerConfig:  string(masterServerConfigBytes),
 	}, {
-		Type:          dstety.WorldTypeCaves,
+		Type:          "Caves",
 		WorldOverride: string(cavesWorldOverridesBytes),
 		ServerConfig:  string(cavesServerConfigBytes),
 	}}
 
-	clusterConfigBytes, err := fileutil.Read(cph.ClusterIni())
+	clusterConfigBytes, err := fileutil.Read(clusterIni(archID))
 	if err != nil {
 		return errutil.Wrap(err)
 	}
