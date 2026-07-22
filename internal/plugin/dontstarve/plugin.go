@@ -9,8 +9,6 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -28,7 +26,6 @@ type Plugin struct {
 	db           *store.DB
 	config       *cfg.Config
 	state        *cache.State
-	ph           *pathHelper
 	transferLock *sync.Mutex
 }
 
@@ -38,7 +35,6 @@ func NewPlugin(db *store.DB, config *cfg.Config, state *cache.State, logger *log
 		config:       config,
 		state:        state,
 		logger:       logger.With("tag", "dst"),
-		ph:           newPathHelper(),
 		transferLock: &sync.Mutex{},
 	}
 	p.svc = service.New(p, logger)
@@ -58,7 +54,7 @@ func (p *Plugin) Service() *service.Service {
 
 func (p *Plugin) Install(ctx context.Context) error {
 	err := steam.NewSteamcmd(p.config.SteamCmdPath, p.logger).
-		SetForceInstallDir(p.ph.ProgramDir()).
+		SetForceInstallDir(programDir()).
 		DoAppUpdate(ctx, ServerAppId)
 	if err != nil {
 		return errutil.Wrap(err)
@@ -67,7 +63,7 @@ func (p *Plugin) Install(ctx context.Context) error {
 }
 
 func (p *Plugin) Uninstall(ctx context.Context) error {
-	err := fileutil.Remove(p.ph.ProgramDir())
+	err := fileutil.Remove(programDir())
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -83,27 +79,10 @@ func (p *Plugin) Update(ctx context.Context) error {
 }
 
 func (p *Plugin) RunCmd(ctx context.Context, process *service.SubProcess, cmd string) (string, error) {
-	builder := strings.Builder{}
-	process.RegisterOutputFunc("run_cmd", func(line []byte) {
-		builder.Write(line)
-	})
-
-	cmd = strings.TrimRight(cmd, "\n")
-	_, err := process.Write([]byte(fmt.Sprintf("[BEGIN_CMD]\n%s\n[END_CMD]\n", cmd)))
+	out, err := process.SendCommand(cmd, service.DefaultCommandTimeout)
 	if err != nil {
-		process.UnregisterOutputFunc("run_cmd")
 		return "", errutil.Wrap(err)
 	}
-	time.Sleep(500 * time.Millisecond)
-	process.UnregisterOutputFunc("run_cmd")
-
-	rawOut := builder.String()
-	pattern := regexp.MustCompile(`(?ms)BEGIN_CMD(.*?)END_CMD`)
-	res := pattern.FindStringSubmatch(rawOut)
-	if len(res) == 0 {
-		return "", fmt.Errorf("regex cmd out failed: %s", rawOut)
-	}
-	out := res[1]
 	p.logger.InfoC(ctx, "run cmd success", "cmd", cmd, "out", out)
 	return out, nil
 }
@@ -118,11 +97,11 @@ func (p *Plugin) PrepareProcess(ctx context.Context,
 
 	_, err := p.db.GetArchive(ctx, archID)
 	if err == sql.ErrNoRows {
-		cph := newClusterPathHelper(p.ph, archID)
-		if !fileutil.Exist(cph.Root()) {
+		root := clusterRoot(archID)
+		if !fileutil.Exist(root) {
 			return nil, fmt.Errorf("archID %s not exist neither in db nor on disk", archID)
 		}
-		arch, err := p.createArchiveFromDisk(ctx, cph.Root(), filepath.Base(cph.Root()))
+		arch, err := p.createArchiveFromDisk(ctx, root, filepath.Base(root))
 		if err != nil {
 			return nil, errutil.Wrap(err)
 		}
@@ -145,9 +124,9 @@ func (p *Plugin) PrepareProcess(ctx context.Context,
 	process := make(map[string]*service.SubProcess)
 	for _, shard := range []string{ShardMaster, ShardCaves} {
 		args := []string{"-console", "-cluster", archID, "-shard", shard}
-		pp := service.NewSubprocess(shard, p.ph.DstServPath(), args).
+		pp := service.NewSubprocess(shard, dstServPath(), args).
 			SetLogger(p.logger).
-			SetDir(filepath.Join(p.ph.ProgramDir(), "bin64"))
+			SetDir(filepath.Join(programDir(), "bin64"))
 
 		logger := p.logger.With("out", shard)
 		pp.RegisterOutputFunc("log", func(line []byte) {

@@ -3,6 +3,7 @@ package service
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -185,6 +186,56 @@ func (p *SubProcess) blockWait() {
 	p.waitChan <- err
 	p.cancel()
 	log.Warn("subprocess stopped", "err", err)
+}
+
+const DefaultCommandTimeout = 2 * time.Second
+
+// SendCommand writes a command to stdin and collects output for the given timeout.
+// It filters out the command echo line (which DST console always echoes back).
+func (p *SubProcess) SendCommand(cmd string, timeout time.Duration) (string, error) {
+	if p.cmd == nil || p.cmd.Process == nil {
+		return "", errutil.Wrap(ErrNotStartedYet)
+	}
+
+	cmd = strings.TrimRight(cmd, "\n")
+
+	var mu sync.Mutex
+	var lines []string
+
+	name := fmt.Sprintf("sendcmd_%d", time.Now().UnixNano())
+	p.RegisterOutputFunc(name, func(line []byte) {
+		mu.Lock()
+		lines = append(lines, string(line))
+		mu.Unlock()
+	})
+
+	_, err := p.Write([]byte(cmd + "\n"))
+	if err != nil {
+		p.UnregisterOutputFunc(name)
+		return "", errutil.Wrap(err)
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-p.ctx.Done():
+		p.UnregisterOutputFunc(name)
+		return "", p.ctx.Err()
+	}
+
+	p.UnregisterOutputFunc(name)
+
+	// Filter out the command echo line
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if strings.TrimSpace(line) == cmd {
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+
+	return strings.Join(filtered, "\n"), nil
 }
 
 func (p *SubProcess) loopOutput() {
