@@ -1,20 +1,18 @@
 package svcapi
 
 import (
-	"aurora-admin/ent"
 	"aurora-admin/internal/entity/comety"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"aurora-admin/pkg/log"
 	"aurora-admin/pkg/service"
 )
 
 type Api struct {
 }
 
-func NewApi(db *ent.Client, logger *log.Logger) *Api {
+func NewApi() *Api {
 	return &Api{}
 }
 

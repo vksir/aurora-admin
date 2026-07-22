@@ -1,17 +1,15 @@
 package authapi
 
 import (
-	"aurora-admin/ent"
 	"aurora-admin/internal/entity/comety"
 	"github.com/gin-gonic/gin"
-	"aurora-admin/pkg/log"
 	"net/http"
 )
 
 type Api struct {
 }
 
-func NewApi(db *ent.Client, logger *log.Logger) *Api {
+func NewApi() *Api {
 	return &Api{}
 }
 

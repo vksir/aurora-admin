@@ -1,11 +1,10 @@
 package dstapi
 
 import (
-	"aurora-admin/ent"
-	"aurora-admin/ent/dontstarvearchive"
 	"aurora-admin/internal/entity/comety"
 	"aurora-admin/internal/entity/dstety"
 	"aurora-admin/internal/plugin/dontstarve"
+	"aurora-admin/internal/store"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,10 +13,10 @@ import (
 
 type Api struct {
 	plugin *dontstarve.Plugin
-	db     *ent.Client
+	db     *store.DB
 }
 
-func NewApi(dst *dontstarve.Plugin, db *ent.Client) *Api {
+func NewApi(dst *dontstarve.Plugin, db *store.DB) *Api {
 	return &Api{plugin: dst, db: db}
 }
 
@@ -92,12 +91,12 @@ func (d *Api) UpdateConfig(c *gin.Context) {
 // @Accept			json
 // @Produce			json
 // @Param			id path string true "id"
-// @Success			200 {object} comety.Response{data=ent.DontStarveArchive}
+// @Success			200 {object} comety.Response{data=store.Archive}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/archive/{id} [get]
 func (d *Api) GetArchive(c *gin.Context) {
 	id := c.Param("id")
-	res, err := d.db.DontStarveArchive.Query().Where(dontstarvearchive.ID(id)).WithMods().Only(c)
+	res, err := d.db.GetArchive(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
@@ -111,11 +110,11 @@ func (d *Api) GetArchive(c *gin.Context) {
 // @Accept			json
 // @Produce			json
 // @Param			request query any true "query"
-// @Success			200 {object} comety.Response{data=[]ent.DontStarveArchive}
+// @Success			200 {object} comety.Response{data=[]store.Archive}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/archive [get]
 func (d *Api) ListArchive(c *gin.Context) {
-	res, err := d.db.DontStarveArchive.Query().WithMods().All(c)
+	res, err := d.db.ListArchives(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
@@ -147,13 +146,13 @@ func (d *Api) CreateArchive(c *gin.Context) {
 // @Accept			json
 // @Produce			json
 // @Param			id path string true "id"
-// @Param			request body ent.DontStarveArchive true "body"
-// @Success			200 {object} comety.Response{data=ent.DontStarveArchive}
+// @Param			request body store.Archive true "body"
+// @Success			200 {object} comety.Response{data=store.Archive}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/archive/{id} [put]
 func (d *Api) UpdateArchive(c *gin.Context) {
 	id := c.Param("id")
-	var req ent.DontStarveArchive
+	var req store.Archive
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
 		return
@@ -224,7 +223,7 @@ func (d *Api) UploadCreateArchive(c *gin.Context) {
 // @Produce			json
 // @Param			id path string true "id"
 // @Param			file formData file true "file"
-// @Success			200 {object} comety.Response{data=ent.DontStarveArchive}
+// @Success			200 {object} comety.Response{data=store.Archive}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/archive/upload/{id} [put]
 func (d *Api) UploadUpdateArchive(c *gin.Context) {
@@ -388,7 +387,7 @@ func (d *Api) DownloadArchive(c *gin.Context) {
 // @Tags			dontstarve_mod
 // @Accept			json
 // @Produce			json
-// @Success			200 {object} comety.Response{data=[]ent.DontStarveMod}
+// @Success			200 {object} comety.Response{data=[]store.Mod}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/mod [get]
 func (d *Api) ListMod(c *gin.Context) {
@@ -425,13 +424,13 @@ func (d *Api) GetMod(c *gin.Context) {
 // @Accept			json
 // @Produce			json
 // @Param			id path string true "id"
-// @Param			request body ent.DontStarveMod true "body"
-// @Success			200 {object} comety.Response{data=ent.DontStarveMod}
+// @Param			request body store.Mod true "body"
+// @Success			200 {object} comety.Response{data=store.Mod}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/mod/{id} [put]
 func (d *Api) UpdateMod(c *gin.Context) {
 	id := c.Param("id")
-	var req ent.DontStarveMod
+	var req store.Mod
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
 		return
@@ -557,11 +556,11 @@ func (d *Api) Rollback(c *gin.Context) {
 // @Tags			dontstarve_admin
 // @Accept			json
 // @Produce			json
-// @Success			200 {object} comety.Response{data=[]ent.DontStarveAdmin}
+// @Success			200 {object} comety.Response{data=[]store.Admin}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/admin [get]
 func (d *Api) ListAdmin(c *gin.Context) {
-	res, err := d.db.DontStarveAdmin.Query().All(c)
+	res, err := d.db.ListAdmins(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
@@ -574,20 +573,17 @@ func (d *Api) ListAdmin(c *gin.Context) {
 // @Tags			dontstarve_admin
 // @Accept			json
 // @Produce			json
-// @Param			request body ent.DontStarveAdmin true "body"
-// @Success			200 {object} comety.Response{data=ent.DontStarveAdmin}
+// @Param			request body store.Admin true "body"
+// @Success			200 {object} comety.Response{data=store.Admin}
 // @Failure			500 {object} any
 // @Router			/api/dontstarve/admin [post]
 func (d *Api) CreateAdmin(c *gin.Context) {
-	var req ent.DontStarveAdmin
+	var req store.Admin
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
 		return
 	}
-	res, err := d.db.DontStarveAdmin.Create().
-		SetKleiID(req.KleiID).
-		SetName(req.Name).
-		Save(c)
+	res, err := d.db.CreateAdmin(c, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
@@ -606,7 +602,7 @@ func (d *Api) CreateAdmin(c *gin.Context) {
 // @Router			/api/dontstarve/admin/{id} [delete]
 func (d *Api) DeleteAdmin(c *gin.Context) {
 	id := c.Param("id")
-	err := d.db.DontStarveAdmin.DeleteOneID(id).Exec(c)
+	err := d.db.DeleteAdmin(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return

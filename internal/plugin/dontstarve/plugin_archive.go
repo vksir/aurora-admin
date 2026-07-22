@@ -2,11 +2,10 @@ package dontstarve
 
 import (
 	"aurora-admin/assets"
-	"aurora-admin/ent"
-	"aurora-admin/ent/dontstarvearchive"
 	"aurora-admin/internal/entity/dstety"
-	"aurora-admin/pkg/database"
+	"aurora-admin/internal/store"
 	"context"
+	"database/sql"
 	"io"
 	"os"
 
@@ -20,8 +19,8 @@ const (
 	iconEye = "󰀅"
 )
 
-func (p *Plugin) UploadCreateArchive(ctx context.Context, r io.Reader, archName string) (*ent.DontStarveArchive, error) {
-	var arch *ent.DontStarveArchive
+func (p *Plugin) UploadCreateArchive(ctx context.Context, r io.Reader, archName string) (*store.Archive, error) {
+	var arch *store.Archive
 	err := p.uploadArchive(ctx, r, archName, func(ctx context.Context, path string, archName string) error {
 		var err error
 		arch, err = p.createArchiveFromDisk(ctx, path, archName)
@@ -36,8 +35,8 @@ func (p *Plugin) UploadCreateArchive(ctx context.Context, r io.Reader, archName 
 	return arch, nil
 }
 
-func (p *Plugin) UploadUpdateArchive(ctx context.Context, r io.Reader, id string, fileName string) (*ent.DontStarveArchive, error) {
-	var arch *ent.DontStarveArchive
+func (p *Plugin) UploadUpdateArchive(ctx context.Context, r io.Reader, id string, fileName string) (*store.Archive, error) {
+	var arch *store.Archive
 	err := p.uploadArchive(ctx, r, fileName, func(ctx context.Context, path string, fileName string) error {
 		var err error
 		arch, err = p.updateArchiveFromDisk(ctx, path, id)
@@ -55,7 +54,6 @@ func (p *Plugin) UploadUpdateArchive(ctx context.Context, r io.Reader, id string
 func (p *Plugin) uploadArchive(ctx context.Context, r io.Reader, archName string,
 	callback func(ctx context.Context, path string, fileName string) error) error {
 
-	// TODO: save at tmp path
 	ph := newPathHelper()
 	tempDir, err := fileutil.NewTempDir(ph.ClusterDir(), "archive-*")
 	if err != nil {
@@ -86,14 +84,14 @@ func (p *Plugin) uploadArchive(ctx context.Context, r io.Reader, archName string
 	return nil
 }
 
-func (p *Plugin) CreateArchive(ctx context.Context) (*ent.DontStarveArchive, error) {
-	arch, err := p.db.DontStarveArchive.Create().
-		SetClusterName("Aurora").
-		SetClusterPassword("6666").
-		SetClusterDescription("Just Have Fun").
-		SetMaxPlayers(6).
-		SetPvp(false).
-		SetWorld([]dstety.DontStarveWorld{
+func (p *Plugin) CreateArchive(ctx context.Context) (*store.Archive, error) {
+	arch := &store.Archive{
+		ClusterName:        "Aurora",
+		ClusterPassword:    "6666",
+		ClusterDescription: "Just Have Fun",
+		MaxPlayers:         6,
+		Pvp:                false,
+		World: []dstety.DontStarveWorld{
 			{
 				Type:          dstety.WorldTypeMaster,
 				ServerConfig:  assets.DontStarveMasterServerIni,
@@ -104,8 +102,9 @@ func (p *Plugin) CreateArchive(ctx context.Context) (*ent.DontStarveArchive, err
 				ServerConfig:  assets.DontStarveCavesServerIni,
 				WorldOverride: assets.DontStarveCavesOverride,
 			},
-		}).
-		Save(ctx)
+		},
+	}
+	arch, err := p.db.CreateArchive(ctx, arch)
 	if err != nil {
 		return nil, errutil.Wrap(err)
 	}
@@ -119,7 +118,7 @@ func (p *Plugin) CreateArchive(ctx context.Context) (*ent.DontStarveArchive, err
 }
 
 func (p *Plugin) DownloadArchive(ctx context.Context, id string, w io.Writer) error {
-	_, err := p.db.DontStarveArchive.Query().Where(dontstarvearchive.ID(id)).WithMods().Only(ctx)
+	_, err := p.db.GetArchive(ctx, id)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -143,25 +142,15 @@ func (p *Plugin) DeleteArchive(ctx context.Context, id string) error {
 		return errutil.Wrap(err)
 	}
 
-	err = p.db.DontStarveArchive.DeleteOneID(id).Exec(ctx)
+	err = p.db.DeleteArchive(ctx, id)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
 	return nil
 }
 
-func (p *Plugin) UpdateArchive(ctx context.Context, arch *ent.DontStarveArchive) (*ent.DontStarveArchive, error) {
-	_, err := p.db.DontStarveArchive.UpdateOne(arch).
-		SetRemark(arch.Remark).
-		SetClusterName(arch.ClusterName).
-		SetClusterPassword(arch.ClusterPassword).
-		SetClusterDescription(arch.ClusterDescription).
-		SetMaxPlayers(arch.MaxPlayers).
-		SetPvp(arch.Pvp).
-		SetWorld(arch.World).
-		ClearMods().
-		AddMods(arch.Edges.Mods...).
-		Save(ctx)
+func (p *Plugin) UpdateArchive(ctx context.Context, arch *store.Archive) (*store.Archive, error) {
+	_, err := p.db.UpdateArchive(ctx, arch)
 	if err != nil {
 		return nil, errutil.Wrap(err)
 	}
@@ -175,47 +164,35 @@ func (p *Plugin) UpdateArchive(ctx context.Context, arch *ent.DontStarveArchive)
 	return p.GetArchive(ctx, arch.ID)
 }
 
-func (p *Plugin) GetArchive(ctx context.Context, id string) (*ent.DontStarveArchive, error) {
-	return p.db.DontStarveArchive.Query().Where(dontstarvearchive.ID(id)).WithMods().Only(ctx)
+func (p *Plugin) GetArchive(ctx context.Context, id string) (*store.Archive, error) {
+	return p.db.GetArchive(ctx, id)
 }
 
-func (p *Plugin) createArchiveFromDisk(ctx context.Context, path string, archName string) (*ent.DontStarveArchive, error) {
+func (p *Plugin) createArchiveFromDisk(ctx context.Context, path string, archName string) (*store.Archive, error) {
 	if !fileutil.Exist(path) {
 		return nil, errutil.WrapNotFound(path)
 	}
 
-	var newArch *ent.DontStarveArchive
-	err := database.WithTx(ctx, p.db, func(ctx context.Context, tx *ent.Tx) error {
-		arch, err := tx.DontStarveArchive.Create().Save(ctx)
+	var newArch *store.Archive
+	err := p.db.WithTx(ctx, func(ctx context.Context, _ *sql.Tx) error {
+		arch := &store.Archive{Remark: archName}
+		arch, err := p.db.CreateArchive(ctx, arch)
 		if err != nil {
 			return errutil.Wrap(err)
 		}
 
-		arch.Remark = archName
 		cph := newClusterPathHelper(p.ph, arch.ID).SetRoot(path)
 		err = p.loadArchive(ctx, cph, arch)
 		if err != nil {
 			return errutil.Wrap(err)
 		}
 
-		_, err = tx.DontStarveArchive.UpdateOne(arch).
-			SetRemark(arch.Remark).
-			SetClusterName(arch.ClusterName).
-			SetClusterPassword(arch.ClusterPassword).
-			SetClusterDescription(arch.ClusterDescription).
-			SetMaxPlayers(arch.MaxPlayers).
-			SetPvp(arch.Pvp).
-			SetWorld(arch.World).
-			ClearMods().
-			AddMods(arch.Edges.Mods...).
-			Save(ctx)
+		_, err = p.db.UpdateArchive(ctx, arch)
 		if err != nil {
 			return errutil.Wrap(err)
 		}
-		newArch, err = tx.DontStarveArchive.Query().Where(dontstarvearchive.ID(arch.ID)).WithMods().Only(ctx)
-		if err != nil {
-			return errutil.Wrap(err)
-		}
+
+		newArch = arch
 
 		newCph := newClusterPathHelper(p.ph, arch.ID)
 		err = fileutil.Mv(cph.Root(), newCph.Root())
@@ -230,12 +207,12 @@ func (p *Plugin) createArchiveFromDisk(ctx context.Context, path string, archNam
 	return newArch, nil
 }
 
-func (p *Plugin) updateArchiveFromDisk(ctx context.Context, path string, archID string) (*ent.DontStarveArchive, error) {
+func (p *Plugin) updateArchiveFromDisk(ctx context.Context, path string, archID string) (*store.Archive, error) {
 	if !fileutil.Exist(path) {
 		return nil, errutil.WrapNotFound(path)
 	}
 
-	arch, err := p.db.DontStarveArchive.Query().Where(dontstarvearchive.ID(archID)).WithMods().Only(ctx)
+	arch, err := p.db.GetArchive(ctx, archID)
 	if err != nil {
 		return nil, errutil.Wrap(err)
 	}
@@ -253,7 +230,7 @@ func (p *Plugin) updateArchiveFromDisk(ctx context.Context, path string, archID 
 	return newArch, nil
 }
 
-func (p *Plugin) loadArchive(ctx context.Context, cph *clusterPathHelper, arch *ent.DontStarveArchive) error {
+func (p *Plugin) loadArchive(ctx context.Context, cph *clusterPathHelper, arch *store.Archive) error {
 	master, err := cph.Shard(dstety.WorldTypeMaster)
 	if err != nil {
 		return errutil.Wrap(err)
@@ -271,7 +248,7 @@ func (p *Plugin) loadArchive(ctx context.Context, cph *clusterPathHelper, arch *
 	if err != nil {
 		return errutil.Wrap(err)
 	}
-	arch.Edges.Mods = mods
+	arch.Mods = mods
 
 	masterWorldOverridesBytes, err := fileutil.Read(master.WorldOverrideLua())
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"text/template"
 
-	"aurora-admin/ent"
+	"aurora-admin/internal/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +20,7 @@ func executeString(tmpl textTemplate) (string, error) {
 }
 
 func TestDeployAdmin(t *testing.T) {
-	d := &deployAdmin{Admin: []*ent.DontStarveAdmin{
+	d := &deployAdmin{Admin: []*store.Admin{
 		{
 			KleiID: "id1",
 		},
@@ -36,7 +36,7 @@ id2
 }
 
 func TestDeployModSetup(t *testing.T) {
-	d := &deployModSetup{Mods: []*ent.DontStarveMod{
+	d := &deployModSetup{Mods: []*store.Mod{
 		{
 			WorkshopID: "id1",
 		},

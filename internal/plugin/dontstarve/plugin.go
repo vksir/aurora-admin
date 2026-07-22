@@ -1,11 +1,12 @@
 package dontstarve
 
 import (
-	"aurora-admin/ent"
+	"aurora-admin/internal/store"
 	"aurora-admin/pkg/cache"
 	"aurora-admin/pkg/cfg"
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -24,14 +25,14 @@ type Plugin struct {
 	svc          *service.Service
 	autoupdate   *autoupdateHelper
 	logger       *log.Logger
-	db           *ent.Client
+	db           *store.DB
 	config       *cfg.Config
 	state        *cache.State
 	ph           *pathHelper
 	transferLock *sync.Mutex
 }
 
-func NewPlugin(db *ent.Client, config *cfg.Config, state *cache.State, logger *log.Logger) *Plugin {
+func NewPlugin(db *store.DB, config *cfg.Config, state *cache.State, logger *log.Logger) *Plugin {
 	p := &Plugin{
 		db:           db,
 		config:       config,
@@ -115,8 +116,8 @@ func (p *Plugin) PrepareProcess(ctx context.Context,
 		return nil, fmt.Errorf("empty archID")
 	}
 
-	_, err := p.db.DontStarveArchive.Get(ctx, archID)
-	if ent.IsNotFound(err) {
+	_, err := p.db.GetArchive(ctx, archID)
+	if err == sql.ErrNoRows {
 		cph := newClusterPathHelper(p.ph, archID)
 		if !fileutil.Exist(cph.Root()) {
 			return nil, fmt.Errorf("archID %s not exist neither in db nor on disk", archID)

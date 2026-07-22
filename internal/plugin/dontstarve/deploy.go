@@ -8,9 +8,8 @@ import (
 	"text/template"
 
 	"aurora-admin/assets"
-	"aurora-admin/ent"
-	"aurora-admin/ent/dontstarvearchive"
 	"aurora-admin/internal/entity/dstety"
+	"aurora-admin/internal/store"
 	"aurora-admin/pkg/cache"
 	"aurora-admin/pkg/log"
 	"aurora-admin/pkg/util/convutil"
@@ -20,7 +19,7 @@ import (
 )
 
 type deployer struct {
-	db     *ent.Client
+	db     *store.DB
 	logger *log.Logger
 	state  *cache.State
 	archID string
@@ -28,7 +27,7 @@ type deployer struct {
 	cph    *clusterPathHelper
 }
 
-func newDeployer(archID string, db *ent.Client, state *cache.State, logger *log.Logger) *deployer {
+func newDeployer(archID string, db *store.DB, state *cache.State, logger *log.Logger) *deployer {
 	d := &deployer{
 		db:     db,
 		state:  state,
@@ -68,11 +67,11 @@ func executeTemplates(m map[string]textTemplate) error {
 }
 
 func (d *deployer) DeployBeforeStart(ctx context.Context) error {
-	arch, err := d.db.DontStarveArchive.Query().Where(dontstarvearchive.ID(d.archID)).WithMods().Only(ctx)
+	arch, err := d.db.GetArchive(ctx, d.archID)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
-	admins, err := d.db.DontStarveAdmin.Query().All(ctx)
+	admins, err := d.db.ListAdmins(ctx)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -81,7 +80,7 @@ func (d *deployer) DeployBeforeStart(ctx context.Context) error {
 	}
 
 	err = executeTemplates(map[string]textTemplate{
-		d.ph.ModSetupPath():     &deployModSetup{Mods: arch.Edges.Mods},
+		d.ph.ModSetupPath():     &deployModSetup{Mods: arch.Mods},
 		d.cph.ClusterTokenTxt(): &deployToken{Token: d.state.DontStarve.Token},
 		d.cph.AdminListTxt():    &deployAdmin{Admin: admins},
 	})
@@ -97,7 +96,7 @@ func (d *deployer) DeployBeforeStart(ctx context.Context) error {
 }
 
 func (d *deployer) DeployCluster(ctx context.Context) error {
-	arch, err := d.db.DontStarveArchive.Query().Where(dontstarvearchive.ID(d.archID)).WithMods().Only(ctx)
+	arch, err := d.db.GetArchive(ctx, d.archID)
 	if err != nil {
 		return errutil.Wrap(err)
 	}
@@ -121,7 +120,7 @@ func (d *deployer) DeployCluster(ctx context.Context) error {
 	return nil
 }
 
-func (d *deployer) deployClusterIni(ctx context.Context, arch *ent.DontStarveArchive) error {
+func (d *deployer) deployClusterIni(ctx context.Context, arch *store.Archive) error {
 	clusterConfigBytes := []byte(assets.DontStarveClusterIni)
 	if fileutil.Exist(d.cph.ClusterIni()) {
 		var err error
@@ -159,7 +158,7 @@ func (d *deployer) deployClusterIni(ctx context.Context, arch *ent.DontStarveArc
 	return nil
 }
 
-func (d *deployer) deployWorld(ctx context.Context, arch *ent.DontStarveArchive, world *dstety.DontStarveWorld) error {
+func (d *deployer) deployWorld(ctx context.Context, arch *store.Archive, world *dstety.DontStarveWorld) error {
 	sph, err := d.cph.Shard(world.Type)
 	if err != nil {
 		return errutil.Wrap(err)
@@ -187,9 +186,9 @@ func (d *deployer) deployWorld(ctx context.Context, arch *ent.DontStarveArchive,
 	return nil
 }
 
-func (d *deployer) deployMod(ctx context.Context, arch *ent.DontStarveArchive, sph *shardPathHelper) error {
+func (d *deployer) deployMod(ctx context.Context, arch *store.Archive, sph *shardPathHelper) error {
 	var rawConfigs []string
-	for _, m := range arch.Edges.Mods {
+	for _, m := range arch.Mods {
 		rawConfigs = append(rawConfigs, m.RawConfig)
 	}
 	modOverridesContent := genModOverrideContent(rawConfigs)
@@ -201,7 +200,7 @@ func (d *deployer) deployMod(ctx context.Context, arch *ent.DontStarveArchive, s
 }
 
 type deployModSetup struct {
-	Mods []*ent.DontStarveMod
+	Mods []*store.Mod
 }
 
 func (d *deployModSetup) Template() string {
@@ -217,7 +216,7 @@ func (d *deployToken) Template() string {
 }
 
 type deployAdmin struct {
-	Admin []*ent.DontStarveAdmin
+	Admin []*store.Admin
 }
 
 func (d *deployAdmin) Template() string {
@@ -225,7 +224,7 @@ func (d *deployAdmin) Template() string {
 }
 
 type deployModOverrides struct {
-	Mods []*ent.DontStarveMod
+	Mods []*store.Mod
 }
 
 func (d *deployModOverrides) Template() string {

@@ -13,10 +13,9 @@ import (
 
 	"aurora-admin/assets"
 	"aurora-admin/internal/app"
+	"aurora-admin/internal/store"
 	"aurora-admin/pkg/cache"
 	"aurora-admin/pkg/cfg"
-	"aurora-admin/pkg/constant"
-	"aurora-admin/pkg/database"
 	"aurora-admin/pkg/log"
 	"aurora-admin/pkg/util/errutil"
 	"aurora-admin/pkg/util/fileutil"
@@ -39,6 +38,11 @@ type systemdService struct {
 func (s *systemdService) Template() string {
 	return serviceTmpl
 }
+
+const (
+	execPath = "/root/aurora-admin/aurora-admin"
+	confPath = "/root/aurora-admin/config.toml"
+)
 
 func (s *systemdService) serviceName() string {
 	return s.Name + ".service"
@@ -121,10 +125,10 @@ func main() {
 					svc := &systemdService{
 						Name:             "aurora-admin",
 						Description:      "aurora admin",
-						ExecStart:        fmt.Sprintf("%s serve -c %s", constant.ExecPath, constant.ConfPath),
+						ExecStart:        fmt.Sprintf("%s serve -c %s", execPath, confPath),
 						RestartOnFailure: true,
 					}
-					return installService(svc, constant.ExecPath)
+					return installService(svc, execPath)
 				},
 			},
 			{
@@ -172,7 +176,13 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 
 	// Init Others
 	state := cache.Init(workspace.CachePath())
-	db := database.Init(workspace.DBPath())
+	db, err := store.Open(workspace.DBPath())
+	if err != nil {
+		return errutil.Wrap(err)
+	}
+	if err := db.Migrate(ctx); err != nil {
+		return errutil.Wrap(err)
+	}
 
 	defer func() {
 		if r := recover(); r != nil {

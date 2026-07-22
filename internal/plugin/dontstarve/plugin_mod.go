@@ -1,11 +1,10 @@
 package dontstarve
 
 import (
-	"aurora-admin/ent"
-	"aurora-admin/ent/dontstarvemod"
 	"aurora-admin/internal/entity/dstety"
-	"aurora-admin/pkg/database"
+	"aurora-admin/internal/store"
 	"context"
+	"database/sql"
 	"fmt"
 	"maps"
 	"regexp"
@@ -18,7 +17,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func (p *Plugin) createModFromModOverrides(ctx context.Context, content []byte) ([]*ent.DontStarveMod, error) {
+func (p *Plugin) createModFromModOverrides(ctx context.Context, content []byte) ([]*store.Mod, error) {
 	workshopID2Config, err := parseModLuaByRegex(string(content))
 	if err != nil {
 		return nil, errutil.Wrap(err)
@@ -29,12 +28,12 @@ func (p *Plugin) createModFromModOverrides(ctx context.Context, content []byte) 
 		log.ErrorC(ctx, "failed to fetch mod info from API", "err", err)
 	}
 
-	var newMods []*ent.DontStarveMod
-	err = database.WithTx(ctx, p.db, func(ctx context.Context, tx *ent.Tx) error {
+	var newMods []*store.Mod
+	err = p.db.WithTx(ctx, func(ctx context.Context, _ *sql.Tx) error {
 		for workshopID, modConfig := range workshopID2Config {
-			mod, err := tx.DontStarveMod.Query().Where(dontstarvemod.WorkshopID(workshopID)).Only(ctx)
-			if ent.IsNotFound(err) {
-				mod, err = tx.DontStarveMod.Create().SetWorkshopID(workshopID).Save(ctx)
+			mod, err := p.db.GetModByWorkshopID(ctx, workshopID)
+			if err == sql.ErrNoRows {
+				mod, err = p.db.CreateMod(ctx, &store.Mod{WorkshopID: workshopID})
 				if err != nil {
 					return errutil.Wrap(err)
 				}
@@ -42,17 +41,17 @@ func (p *Plugin) createModFromModOverrides(ctx context.Context, content []byte) 
 				return errutil.Wrap(err)
 			}
 
-			update := tx.DontStarveMod.UpdateOne(mod).SetRawConfig(modConfig)
+			mod.RawConfig = modConfig
 			info, ok := workshopID2Info[workshopID]
 			if ok {
-				update.SetName(info.Title).
-					SetDescription(info.Description).
-					SetTimeCreated(info.TimeCreated).
-					SetTimeUpdated(info.TimeUpdated).
-					SetImage(info.PreviewUrl)
+				mod.Name = info.Title
+				mod.Description = info.Description
+				mod.TimeCreated = int64(info.TimeCreated)
+				mod.TimeUpdated = int64(info.TimeUpdated)
+				mod.Image = info.PreviewUrl
 			}
 
-			mod, err = update.Save(ctx)
+			mod, err = p.db.UpdateMod(ctx, mod)
 			if err != nil {
 				return errutil.Wrap(err)
 			}
@@ -66,34 +65,33 @@ func (p *Plugin) createModFromModOverrides(ctx context.Context, content []byte) 
 	return newMods, nil
 }
 
-func (p *Plugin) UpdateMod(ctx context.Context, id string, req *ent.DontStarveMod) (*ent.DontStarveMod, error) {
-	err := p.db.DontStarveMod.UpdateOneID(id).
-		SetRawConfig(req.RawConfig).
-		Exec(ctx)
+func (p *Plugin) UpdateMod(ctx context.Context, id string, req *store.Mod) (*store.Mod, error) {
+	mod, err := p.db.GetMod(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return p.db.DontStarveMod.Get(ctx, id)
+	mod.RawConfig = req.RawConfig
+	return p.db.UpdateMod(ctx, mod)
 }
 
 func (p *Plugin) DeleteMod(ctx context.Context, ids ...string) error {
 	for _, id := range ids {
-		mod, err := p.db.DontStarveMod.Query().Where(dontstarvemod.ID(id)).WithArchives().Only(ctx)
-		if ent.IsNotFound(err) {
+		mod, err := p.db.GetModWithArchives(ctx, id)
+		if err == sql.ErrNoRows {
 			continue
 		} else if err != nil {
 			return errutil.Wrap(err)
 		}
 
-		if len(mod.Edges.Archives) != 0 {
+		if len(mod.Archives) != 0 {
 			var usedArchives []string
-			for _, arch := range mod.Edges.Archives {
+			for _, arch := range mod.Archives {
 				usedArchives = append(usedArchives, arch.ID)
 			}
 			return fmt.Errorf("mod %s is used by archives: %v", id, usedArchives)
 		}
 
-		err = p.db.DontStarveMod.DeleteOneID(mod.ID).Exec(ctx)
+		err = p.db.DeleteMod(ctx, mod.ID)
 		if err != nil {
 			return errutil.Wrap(err)
 		}
@@ -101,16 +99,16 @@ func (p *Plugin) DeleteMod(ctx context.Context, ids ...string) error {
 	return nil
 }
 
-func (p *Plugin) GetMod(ctx context.Context, id string) (*ent.DontStarveMod, error) {
-	mod, err := p.db.DontStarveMod.Get(ctx, id)
+func (p *Plugin) GetMod(ctx context.Context, id string) (*store.Mod, error) {
+	mod, err := p.db.GetMod(ctx, id)
 	if err != nil {
 		return nil, errutil.Wrap(err)
 	}
 	return mod, nil
 }
 
-func (p *Plugin) ListMod(ctx context.Context) ([]*ent.DontStarveMod, error) {
-	mods, err := p.db.DontStarveMod.Query().All(ctx)
+func (p *Plugin) ListMod(ctx context.Context) ([]*store.Mod, error) {
+	mods, err := p.db.ListMods(ctx)
 	if err != nil {
 		return nil, errutil.Wrap(err)
 	}

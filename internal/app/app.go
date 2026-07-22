@@ -1,11 +1,11 @@
 package app
 
 import (
-	"aurora-admin/ent"
 	"aurora-admin/internal/api/authapi"
 	"aurora-admin/internal/api/dstapi"
 	"aurora-admin/internal/api/svcapi"
 	"aurora-admin/internal/plugin/dontstarve"
+	"aurora-admin/internal/store"
 	"aurora-admin/pkg/cache"
 	"aurora-admin/pkg/cfg"
 	"context"
@@ -21,7 +21,7 @@ import (
 type application struct {
 	config *cfg.Config
 	state  *cache.State
-	db     *ent.Client
+	db     *store.DB
 	logger *log.Logger
 
 	dontstarvePlugin *dontstarve.Plugin
@@ -31,7 +31,7 @@ type application struct {
 	pluginApi *svcapi.Api
 }
 
-func Run(config *cfg.Config, state *cache.State, db *ent.Client) {
+func Run(config *cfg.Config, state *cache.State, db *store.DB) {
 	log.Warn("aurora admin start...")
 
 	app := &application{
@@ -43,9 +43,9 @@ func Run(config *cfg.Config, state *cache.State, db *ent.Client) {
 
 	app.dontstarvePlugin = dontstarve.NewPlugin(app.db, app.config, app.state, app.logger)
 
-	app.authApi = authapi.NewApi(app.db, app.logger)
+	app.authApi = authapi.NewApi()
 	app.dstApi = dstapi.NewApi(app.dontstarvePlugin, app.db)
-	app.pluginApi = svcapi.NewApi(app.db, app.logger)
+	app.pluginApi = svcapi.NewApi()
 
 	service.Register(dontstarve.PluginName, app.dontstarvePlugin.Service())
 
