@@ -3,8 +3,8 @@ package dontstarve
 import (
 	"context"
 	"fmt"
-	"github.com/vksir/vkiss-lib/pkg/service"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
+	"aurora-admin/pkg/service"
+	"aurora-admin/pkg/util/errutil"
 )
 
 func (p *Plugin) GetPlayers(ctx context.Context) ([]string, error) {

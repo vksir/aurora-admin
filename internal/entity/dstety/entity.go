@@ -2,7 +2,7 @@ package dstety
 
 import (
 	"fmt"
-	"github.com/vksir/vkiss-lib/pkg/log"
+	"aurora-admin/pkg/log"
 	lua "github.com/yuin/gopher-lua"
 	"strconv"
 )

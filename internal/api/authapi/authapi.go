@@ -4,7 +4,7 @@ import (
 	"aurora-admin/ent"
 	"aurora-admin/internal/entity/comety"
 	"github.com/gin-gonic/gin"
-	"github.com/vksir/vkiss-lib/pkg/log"
+	"aurora-admin/pkg/log"
 	"net/http"
 )
 

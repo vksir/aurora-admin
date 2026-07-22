@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vksir/vkiss-lib/pkg/log"
+	"aurora-admin/pkg/log"
 )
 
 type Api struct {

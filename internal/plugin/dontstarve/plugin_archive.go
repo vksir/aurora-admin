@@ -10,9 +10,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/util/fileutil"
 	"gopkg.in/ini.v1"
 )
 
@@ -110,7 +110,7 @@ func (p *Plugin) CreateArchive(ctx context.Context) (*ent.DontStarveArchive, err
 		return nil, errutil.Wrap(err)
 	}
 
-	d := newDeployer(arch.ID, p.db, p.logger)
+	d := newDeployer(arch.ID, p.db, p.state, p.logger)
 	err = d.DeployCluster(ctx)
 	if err != nil {
 		return nil, errutil.Wrap(err)
@@ -166,7 +166,7 @@ func (p *Plugin) UpdateArchive(ctx context.Context, arch *ent.DontStarveArchive)
 		return nil, errutil.Wrap(err)
 	}
 
-	d := newDeployer(arch.ID, p.db, p.logger)
+	d := newDeployer(arch.ID, p.db, p.state, p.logger)
 	err = d.DeployCluster(ctx)
 	if err != nil {
 		return nil, errutil.Wrap(err)

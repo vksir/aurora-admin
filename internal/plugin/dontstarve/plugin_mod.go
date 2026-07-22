@@ -12,9 +12,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
-	"github.com/vksir/vkiss-lib/thirdpkg/steam"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/steam"
 	lua "github.com/yuin/gopher-lua"
 )
 

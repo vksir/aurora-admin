@@ -2,8 +2,8 @@ package steamcmd
 
 import (
 	"aurora-admin/pkg/workspace"
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/util/fileutil"
 	"path/filepath"
 )
 

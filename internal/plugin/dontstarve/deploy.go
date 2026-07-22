@@ -1,39 +1,70 @@
 package dontstarve
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"strconv"
+	"text/template"
+
 	"aurora-admin/assets"
 	"aurora-admin/ent"
 	"aurora-admin/ent/dontstarvearchive"
 	"aurora-admin/internal/entity/dstety"
 	"aurora-admin/pkg/cache"
-	"context"
-	"fmt"
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/template"
-	"github.com/vksir/vkiss-lib/pkg/util/convutil"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/util/convutil"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/util/fileutil"
 	"gopkg.in/ini.v1"
-	"strconv"
 )
 
 type deployer struct {
 	db     *ent.Client
 	logger *log.Logger
+	state  *cache.State
 	archID string
 	ph     *pathHelper
 	cph    *clusterPathHelper
 }
 
-func newDeployer(archID string, db *ent.Client, logger *log.Logger) *deployer {
+func newDeployer(archID string, db *ent.Client, state *cache.State, logger *log.Logger) *deployer {
 	d := &deployer{
 		db:     db,
+		state:  state,
 		archID: archID,
 		logger: logger,
 	}
 	d.ph = newPathHelper()
 	d.cph = newClusterPathHelper(d.ph, archID)
 	return d
+}
+
+// textTemplate 本地模板接口，替代原 pkg/template 浅包装
+type textTemplate interface {
+	Template() string
+}
+
+// executeTemplates 内联原 template.ExecuteFiles 逻辑
+func executeTemplates(m map[string]textTemplate) error {
+	for path, t := range m {
+		tmpl, err := template.New("").Parse(t.Template())
+		if err != nil {
+			return errutil.Wrap(err)
+		}
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o640)
+		if err != nil {
+			return errutil.Wrap(err)
+		}
+		if err := tmpl.Execute(f, t); err != nil {
+			f.Close()
+			return fmt.Errorf("execute template %s failed: %w", path, err)
+		}
+		if err := f.Close(); err != nil {
+			return errutil.Wrap(err)
+		}
+	}
+	return nil
 }
 
 func (d *deployer) DeployBeforeStart(ctx context.Context) error {
@@ -45,13 +76,13 @@ func (d *deployer) DeployBeforeStart(ctx context.Context) error {
 	if err != nil {
 		return errutil.Wrap(err)
 	}
-	if cache.G.DontStarve.Token == "" {
+	if d.state.DontStarve.Token == "" {
 		return fmt.Errorf("token not exist")
 	}
 
-	err = template.ExecuteFiles(map[string]template.Template{
+	err = executeTemplates(map[string]textTemplate{
 		d.ph.ModSetupPath():     &deployModSetup{Mods: arch.Edges.Mods},
-		d.cph.ClusterTokenTxt(): &deployToken{Token: cache.G.DontStarve.Token},
+		d.cph.ClusterTokenTxt(): &deployToken{Token: d.state.DontStarve.Token},
 		d.cph.AdminListTxt():    &deployAdmin{Admin: admins},
 	})
 	if err != nil {
@@ -108,11 +139,11 @@ func (d *deployer) deployClusterIni(ctx context.Context, arch *ent.DontStarveArc
 	conf.Section("NETWORK").Key("cluster_name").
 		SetValue(iconEye + arch.ClusterName + iconEye)
 	conf.Section("NETWORK").Key("cluster_password").
-		SetValue(cache.G.DontStarve.PassWord)
+		SetValue(d.state.DontStarve.PassWord)
 	conf.Section("NETWORK").Key("cluster_description").
 		SetValue(arch.ClusterDescription)
 	conf.Section("NETWORK").Key("tick_rate").
-		SetValue(strconv.Itoa(cache.G.DontStarve.TickRate))
+		SetValue(strconv.Itoa(d.state.DontStarve.TickRate))
 	conf.Section("NETWORK").Key("lan_only_cluster").
 		SetValue("false")
 

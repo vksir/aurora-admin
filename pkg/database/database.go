@@ -7,12 +7,10 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"fmt"
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/util/errutil"
 	_ "modernc.org/sqlite"
 )
-
-var G *ent.Client
 
 func New(path ...string) (*ent.Client, error) {
 	dsn := "file:ent?mode=memory&cache=shared&_pragma=foreign_keys(1)"
@@ -72,11 +70,11 @@ func WithTx(ctx context.Context, client *ent.Client, fn func(ctx context.Context
 	return nil
 }
 
-func Init(path string) {
+func Init(path string) *ent.Client {
 	c, err := New(path)
-	errutil.Check(err)
-	G = c
+	errutil.Fatal(err)
 
 	err = c.Schema.Create(context.Background())
-	errutil.Check(err)
+	errutil.Fatal(err)
+	return c
 }

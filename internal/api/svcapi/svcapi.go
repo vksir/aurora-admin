@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/service"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/service"
 )
 
 type Api struct {

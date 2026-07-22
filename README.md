@@ -48,6 +48,13 @@ rm steamcmd_linux.tar.gz
 
 ## Dev
 
+### Build
+
+```shell
+# Linux amd64
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o aurora-admin-linux-amd64 .
+```
+
 ### Swag
 
 ```shell

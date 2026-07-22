@@ -13,11 +13,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/service"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
-	"github.com/vksir/vkiss-lib/thirdpkg/steam"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/service"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/util/fileutil"
+	"aurora-admin/pkg/steam"
 )
 
 type Plugin struct {
@@ -25,13 +25,17 @@ type Plugin struct {
 	autoupdate   *autoupdateHelper
 	logger       *log.Logger
 	db           *ent.Client
+	config       *cfg.Config
+	state        *cache.State
 	ph           *pathHelper
 	transferLock *sync.Mutex
 }
 
-func NewPlugin(db *ent.Client, logger *log.Logger) *Plugin {
+func NewPlugin(db *ent.Client, config *cfg.Config, state *cache.State, logger *log.Logger) *Plugin {
 	p := &Plugin{
 		db:           db,
+		config:       config,
+		state:        state,
 		logger:       logger.With("tag", "dst"),
 		ph:           newPathHelper(),
 		transferLock: &sync.Mutex{},
@@ -52,7 +56,7 @@ func (p *Plugin) Service() *service.Service {
 }
 
 func (p *Plugin) Install(ctx context.Context) error {
-	err := steam.NewSteamcmd(cfg.G.SteamCmdPath, p.logger).
+	err := steam.NewSteamcmd(p.config.SteamCmdPath, p.logger).
 		SetForceInstallDir(p.ph.ProgramDir()).
 		DoAppUpdate(ctx, ServerAppId)
 	if err != nil {
@@ -106,7 +110,7 @@ func (p *Plugin) RunCmd(ctx context.Context, process *service.SubProcess, cmd st
 func (p *Plugin) PrepareProcess(ctx context.Context,
 	processCtx context.Context) (map[string]*service.SubProcess, error) {
 
-	archID := cache.G.DontStarve.EnabledArchiveID
+	archID := p.state.DontStarve.EnabledArchiveID
 	if archID == "" {
 		return nil, fmt.Errorf("empty archID")
 	}
@@ -125,13 +129,13 @@ func (p *Plugin) PrepareProcess(ctx context.Context,
 		p.logger.InfoC(ctx, "create arch from disk, change enable_arch_id",
 			"old_arch", archID, "new_arch", archID)
 		archID = arch.ID
-		cache.G.DontStarve.EnabledArchiveID = arch.ID
-		cache.Save()
+		p.state.DontStarve.EnabledArchiveID = arch.ID
+		p.state.Save()
 	} else if err != nil {
 		return nil, errutil.Wrap(err)
 	}
 
-	d := newDeployer(archID, p.db, p.logger)
+	d := newDeployer(archID, p.db, p.state, p.logger)
 	err = d.DeployBeforeStart(ctx)
 	if err != nil {
 		return nil, errutil.Wrap(err)

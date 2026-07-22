@@ -8,17 +8,17 @@ import (
 )
 
 func TestUpdateEdges(t *testing.T) {
-	Init("")
+	client := Init("")
 
-	mod1 := G.DontStarveMod.
+	mod1 := client.DontStarveMod.
 		Create().
 		SetWorkshopID("mod_id1").
 		SaveX(t.Context())
-	mod2 := G.DontStarveMod.
+	mod2 := client.DontStarveMod.
 		Create().
 		SetWorkshopID("mod_id2").
 		SaveX(t.Context())
-	originArch := G.DontStarveArchive.
+	originArch := client.DontStarveArchive.
 		Create().
 		SetClusterName("cluster1").
 		SetWorld([]dstety.DontStarveWorld{
@@ -29,7 +29,7 @@ func TestUpdateEdges(t *testing.T) {
 		AddMods(mod1).
 		SaveX(t.Context())
 
-	queryArch1 := G.DontStarveArchive.
+	queryArch1 := client.DontStarveArchive.
 		Query().
 		Where(dontstarvearchive.ID(originArch.ID)).
 		WithMods().
@@ -39,17 +39,17 @@ func TestUpdateEdges(t *testing.T) {
 	assert.Equal(t, "mod_id1", queryArch1.Edges.Mods[0].WorkshopID)
 
 	// 替换 Edges，被替换的 Mod 条目不会删除
-	updateArch2 := G.DontStarveArchive.
+	updateArch2 := client.DontStarveArchive.
 		UpdateOneID(originArch.ID).
 		ClearMods().
 		AddMods(mod2).
 		SaveX(t.Context())
-	queryArch2 := G.DontStarveArchive.
+	queryArch2 := client.DontStarveArchive.
 		Query().
 		Where(dontstarvearchive.ID(originArch.ID)).
 		WithMods().
 		OnlyX(t.Context())
-	queryMod1 := G.DontStarveMod.GetX(t.Context(), mod1.ID)
+	queryMod1 := client.DontStarveMod.GetX(t.Context(), mod1.ID)
 	assert.Len(t, updateArch2.Edges.Mods, 0)
 	assert.Len(t, queryArch2.Edges.Mods, 1)
 	assert.Equal(t, mod2.ID, queryArch2.Edges.Mods[0].ID)

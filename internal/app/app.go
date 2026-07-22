@@ -6,17 +6,21 @@ import (
 	"aurora-admin/internal/api/dstapi"
 	"aurora-admin/internal/api/svcapi"
 	"aurora-admin/internal/plugin/dontstarve"
-	"aurora-admin/pkg/database"
+	"aurora-admin/pkg/cache"
+	"aurora-admin/pkg/cfg"
 	"context"
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/service"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/service"
 )
 
 type application struct {
-	ctx    context.Context
+	config *cfg.Config
+	state  *cache.State
 	db     *ent.Client
 	logger *log.Logger
 
@@ -27,17 +31,17 @@ type application struct {
 	pluginApi *svcapi.Api
 }
 
-func Run() {
+func Run(config *cfg.Config, state *cache.State, db *ent.Client) {
 	log.Warn("aurora admin start...")
-	ctx, cancel := context.WithCancel(context.Background())
 
 	app := &application{
-		ctx:    ctx,
-		db:     database.G,
+		config: config,
+		state:  state,
+		db:     db,
 		logger: log.DefaultLogger(),
 	}
 
-	app.dontstarvePlugin = dontstarve.NewPlugin(app.db, app.logger)
+	app.dontstarvePlugin = dontstarve.NewPlugin(app.db, app.config, app.state, app.logger)
 
 	app.authApi = authapi.NewApi(app.db, app.logger)
 	app.dstApi = dstapi.NewApi(app.dontstarvePlugin, app.db)
@@ -45,13 +49,17 @@ func Run() {
 
 	service.Register(dontstarve.PluginName, app.dontstarvePlugin.Service())
 
-	go func() {
-		serveHttp(app)
-	}()
+	srv := serveHttp(app)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
 	log.Info("begin exit")
-	cancel()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Error("server shutdown failed", "err", err)
+	}
+	log.Info("server stopped")
 }

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/util/fileutil"
 )
 
 const (

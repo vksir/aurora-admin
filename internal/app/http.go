@@ -4,7 +4,6 @@ import (
 	"aurora-admin/assets"
 	"aurora-admin/docs"
 	_ "aurora-admin/docs"
-	"aurora-admin/pkg/cfg"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -12,15 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/middleware"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/middleware"
+	"aurora-admin/pkg/util/errutil"
 )
 
-func loadStaticRouters(e *gin.Engine) {
-	log.InfoF("static page: http://%s", cfg.G.ApiDocHost)
+func loadStaticRouters(e *gin.Engine, apiDocHost string) {
+	log.InfoF("static page: http://%s", apiDocHost)
 	distFS, err := fs.Sub(assets.StaticFS, "web/dist")
-	errutil.Check(err)
+	errutil.Fatal(err)
 
 	distHttpFS := http.FS(distFS)
 	e.StaticFS("/assets", distHttpFS)
@@ -48,8 +47,7 @@ func loadStaticRouters(e *gin.Engine) {
 	})
 }
 
-func loadSwaggerRouters(g *gin.RouterGroup) {
-	apiDocHost := cfg.G.ApiDocHost
+func loadSwaggerRouters(g *gin.RouterGroup, apiDocHost string) {
 	if apiDocHost != "" {
 		docs.SwaggerInfo.Host = apiDocHost
 	}
@@ -67,20 +65,29 @@ func loadSwaggerRouters(g *gin.RouterGroup) {
 // @version     	1.0
 // @host        	0.0.0.0:5800
 // @BasePath    	/
-func serveHttp(a *application) {
+func serveHttp(a *application) *http.Server {
 	e := gin.New()
 	e.Use(gin.Recovery())
 	e.Use(middleware.Logger(middleware.LoggerConfig{}, a.logger))
-	loadStaticRouters(e)
+	loadStaticRouters(e, a.config.ApiDocHost)
 
 	g := e.Group("/api")
-	loadSwaggerRouters(g)
+	loadSwaggerRouters(g, a.config.ApiDocHost)
 	a.authApi.Load(g)
 	a.dstApi.Load(g)
 	a.pluginApi.Load(g)
 
-	listen := cfg.G.Listen
+	listen := a.config.Listen
 	log.InfoF("listen: %s", listen)
-	err := e.Run(listen)
-	errutil.Check(err)
+
+	srv := &http.Server{
+		Addr:    listen,
+		Handler: e,
+	}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("server listen failed", "err", err)
+		}
+	}()
+	return srv
 }

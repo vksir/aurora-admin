@@ -1,8 +1,8 @@
 package workspace
 
 import (
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/util/fileutil"
 	"os"
 	"path/filepath"
 )
@@ -42,8 +42,8 @@ func Init(workspace string) {
 	dirs := []string{ws, ServiceDir(), LogDir(), TempDir()}
 	for _, d := range dirs {
 		err := os.MkdirAll(d, 0o755)
-		errutil.Check(err)
+		errutil.Fatal(err)
 	}
 	err := fileutil.ClearDir(TempDir())
-	errutil.Check(err)
+	errutil.Fatal(err)
 }

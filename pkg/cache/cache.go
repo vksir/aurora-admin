@@ -2,8 +2,8 @@ package cache
 
 import (
 	"encoding/json"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/util/fileutil"
 )
 
 type cacheDontstarve struct {
@@ -17,30 +17,35 @@ type Cache struct {
 	DontStarve cacheDontstarve `json:"dont_starve"`
 }
 
-var gPath string
-var G *Cache
-
-func Save() {
-	content, err := json.Marshal(G)
-	errutil.Check(err)
-	err = fileutil.Write(gPath, content)
-	errutil.Check(err)
+type State struct {
+	path string
+	Cache
 }
 
-func Init(path string) {
-	gPath = path
-	G = &Cache{
-		DontStarve: cacheDontstarve{
-			TickRate: 15,
+func Init(path string) *State {
+	s := &State{
+		Cache: Cache{
+			DontStarve: cacheDontstarve{
+				TickRate: 15,
+			},
 		},
 	}
+	s.path = path
 
 	if !fileutil.Exist(path) {
-		return
+		return s
 	}
 
 	content, err := fileutil.Read(path)
-	errutil.Check(err)
-	err = json.Unmarshal(content, G)
-	errutil.Check(err)
+	errutil.Fatal(err)
+	err = json.Unmarshal(content, &s.Cache)
+	errutil.Fatal(err)
+	return s
+}
+
+func (s *State) Save() {
+	content, err := json.Marshal(&s.Cache)
+	errutil.Fatal(err)
+	err = fileutil.Write(s.path, content)
+	errutil.Fatal(err)
 }

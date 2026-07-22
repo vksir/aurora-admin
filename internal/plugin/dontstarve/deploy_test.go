@@ -1,11 +1,23 @@
 package dontstarve
 
 import (
+	"strings"
+	"testing"
+	"text/template"
+
 	"aurora-admin/ent"
 	"github.com/stretchr/testify/assert"
-	"github.com/vksir/vkiss-lib/pkg/template"
-	"testing"
 )
+
+func executeString(tmpl textTemplate) (string, error) {
+	t, err := template.New("").Parse(tmpl.Template())
+	if err != nil {
+		return "", err
+	}
+	buf := &strings.Builder{}
+	err = t.Execute(buf, tmpl)
+	return buf.String(), err
+}
 
 func TestDeployAdmin(t *testing.T) {
 	d := &deployAdmin{Admin: []*ent.DontStarveAdmin{
@@ -16,7 +28,7 @@ func TestDeployAdmin(t *testing.T) {
 			KleiID: "id2",
 		},
 	}}
-	res, err := template.ExecuteString(d)
+	res, err := executeString(d)
 	assert.Nil(t, err)
 	assert.Equal(t, `id1
 id2
@@ -32,7 +44,7 @@ func TestDeployModSetup(t *testing.T) {
 			WorkshopID: "id2",
 		},
 	}}
-	res, err := template.ExecuteString(d)
+	res, err := executeString(d)
 	assert.Nil(t, err)
 	assert.Equal(t, `ServerModSetup("id1")
 ServerModSetup("id2")
@@ -41,7 +53,7 @@ ServerModSetup("id2")
 
 func TestDeployToken(t *testing.T) {
 	d := &deployToken{Token: "token1"}
-	res, err := template.ExecuteString(d)
+	res, err := executeString(d)
 	assert.Nil(t, err)
 	assert.Equal(t, `token1`, res)
 }

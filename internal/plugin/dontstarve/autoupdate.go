@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vksir/vkiss-lib/pkg/log"
-	"github.com/vksir/vkiss-lib/pkg/registry"
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
-	"github.com/vksir/vkiss-lib/pkg/util/fileutil"
-	"github.com/vksir/vkiss-lib/thirdpkg/steam"
+	"aurora-admin/pkg/log"
+	"aurora-admin/pkg/registry"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/util/fileutil"
+	"aurora-admin/pkg/steam"
 )
 
 type autoupdateHelper struct {
