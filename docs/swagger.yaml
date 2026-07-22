@@ -1,4 +1,4 @@
-basePath: /
+basePath: /api/v1
 definitions:
   comety.Response:
     properties:
@@ -8,10 +8,15 @@ definitions:
       message:
         type: string
     type: object
-  comety.Status:
+  dstapi.AnnounceRequest:
     properties:
-      status:
+      message:
         type: string
+    type: object
+  dstapi.RollbackRequest:
+    properties:
+      days:
+        type: integer
     type: object
   dstety.Config:
     properties:
@@ -24,32 +29,6 @@ definitions:
       token:
         type: string
     type: object
-  dstety.DontStarveModConfig:
-    properties:
-      hover:
-        type: string
-      label:
-        type: string
-      name:
-        type: string
-      option:
-        items:
-          $ref: '#/definitions/dstety.DontStarveModConfigOption'
-        type: array
-    type: object
-  dstety.DontStarveModConfigOption:
-    properties:
-      default:
-        type: boolean
-      description:
-        type: string
-      hover:
-        type: string
-      string:
-        type: string
-      type:
-        type: integer
-    type: object
   dstety.DontStarveWorld:
     properties:
       server_config:
@@ -59,134 +38,74 @@ definitions:
       world_override:
         type: string
     type: object
-  ent.DontStarveAdmin:
+  store.Admin:
     properties:
       created_at:
-        description: CreatedAt holds the value of the "created_at" field.
         type: string
       id:
-        description: ID of the ent.
         type: string
       klei_id:
-        description: KleiID holds the value of the "klei_id" field.
         type: string
       name:
-        description: Name holds the value of the "name" field.
         type: string
       updated_at:
-        description: UpdatedAt holds the value of the "updated_at" field.
         type: string
     type: object
-  ent.DontStarveArchive:
+  store.Archive:
     properties:
       cluster_description:
-        description: ClusterDescription holds the value of the "cluster_description"
-          field.
         type: string
       cluster_name:
-        description: ClusterName holds the value of the "cluster_name" field.
         type: string
       cluster_password:
-        description: ClusterPassword holds the value of the "cluster_password" field.
         type: string
       created_at:
-        description: CreatedAt holds the value of the "created_at" field.
         type: string
-      edges:
-        allOf:
-        - $ref: '#/definitions/ent.DontStarveArchiveEdges'
-        description: |-
-          Edges holds the relations/edges for other nodes in the graph.
-          The values are being populated by the DontStarveArchiveQuery when eager-loading is set.
       id:
-        description: ID of the ent.
         type: string
       max_players:
-        description: MaxPlayers holds the value of the "max_players" field.
         type: integer
+      mods:
+        items:
+          $ref: '#/definitions/store.Mod'
+        type: array
       pvp:
-        description: Pvp holds the value of the "pvp" field.
         type: boolean
       remark:
-        description: Remark holds the value of the "remark" field.
         type: string
       updated_at:
-        description: UpdatedAt holds the value of the "updated_at" field.
         type: string
       world:
-        description: World holds the value of the "world" field.
         items:
           $ref: '#/definitions/dstety.DontStarveWorld'
         type: array
     type: object
-  ent.DontStarveArchiveEdges:
-    properties:
-      mods:
-        description: Mods holds the value of the mods edge.
-        items:
-          $ref: '#/definitions/ent.DontStarveMod'
-        type: array
-    type: object
-  ent.DontStarveMod:
-    properties:
-      author:
-        description: Author holds the value of the "author" field.
-        type: string
-      config:
-        description: Config holds the value of the "config" field.
-        items:
-          $ref: '#/definitions/dstety.DontStarveModConfig'
-        type: array
-      created_at:
-        description: CreatedAt holds the value of the "created_at" field.
-        type: string
-      description:
-        description: Description holds the value of the "description" field.
-        type: string
-      downloaded:
-        description: Downloaded holds the value of the "downloaded" field.
-        type: boolean
-      edges:
-        allOf:
-        - $ref: '#/definitions/ent.DontStarveModEdges'
-        description: |-
-          Edges holds the relations/edges for other nodes in the graph.
-          The values are being populated by the DontStarveModQuery when eager-loading is set.
-      id:
-        description: ID of the ent.
-        type: string
-      image:
-        description: Image holds the value of the "image" field.
-        type: string
-      name:
-        description: Name holds the value of the "name" field.
-        type: string
-      raw_config:
-        description: RawConfig holds the value of the "raw_config" field.
-        type: string
-      time_created:
-        description: TimeCreated holds the value of the "time_created" field.
-        type: integer
-      time_updated:
-        description: TimeUpdated holds the value of the "time_updated" field.
-        type: integer
-      updated_at:
-        description: UpdatedAt holds the value of the "updated_at" field.
-        type: string
-      version:
-        description: Version holds the value of the "version" field.
-        type: string
-      workshop_id:
-        description: WorkshopID holds the value of the "workshop_id" field.
-        type: string
-    type: object
-  ent.DontStarveModEdges:
+  store.Mod:
     properties:
       archives:
-        description: Archives holds the value of the archives edge.
         items:
-          $ref: '#/definitions/ent.DontStarveArchive'
+          $ref: '#/definitions/store.Archive'
         type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      image:
+        type: string
+      name:
+        type: string
+      raw_config:
+        type: string
+      time_created:
+        type: integer
+      time_updated:
+        type: integer
+      updated_at:
+        type: string
+      workshop_id:
+        type: string
     type: object
 host: 0.0.0.0:5800
 info:
@@ -195,77 +114,7 @@ info:
   title: Aurora Admin
   version: "1.0"
 paths:
-  /api/{service}/{action}:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: service
-        enum:
-        - dontstarve
-        in: path
-        name: service
-        required: true
-        type: string
-      - description: action
-        enum:
-        - start
-        - stop
-        - restart
-        - install
-        - uninstall
-        - update
-        in: path
-        name: action
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/comety.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 服务控制
-      tags:
-      - service_control
-  /api/{service}/status:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: service
-        enum:
-        - dontstarve
-        in: path
-        name: service
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 'status: Inactive, Active, Starting, Stopping, WaitingActive,
-            Abnormal'
-          schema:
-            allOf:
-            - $ref: '#/definitions/comety.Status'
-            - properties:
-                status:
-                  type: string
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 获取状态
-      tags:
-      - service_status
-  /api/dontstarve/admin:
+  /api/v1/dst/admins:
     get:
       consumes:
       - application/json
@@ -280,13 +129,12 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/ent.DontStarveAdmin'
+                    $ref: '#/definitions/store.Admin'
                   type: array
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 获取管理员列表
       tags:
       - dontstarve_admin
@@ -299,7 +147,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/ent.DontStarveAdmin'
+          $ref: '#/definitions/store.Admin'
       produces:
       - application/json
       responses:
@@ -310,16 +158,15 @@ paths:
             - $ref: '#/definitions/comety.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/ent.DontStarveAdmin'
+                  $ref: '#/definitions/store.Admin'
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 创建管理员
       tags:
       - dontstarve_admin
-  /api/dontstarve/admin/{id}:
+  /api/v1/dst/admins/{id}:
     delete:
       consumes:
       - application/json
@@ -338,39 +185,11 @@ paths:
             $ref: '#/definitions/comety.Response'
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 删除管理员
       tags:
       - dontstarve_admin
-  /api/dontstarve/announce:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: body
-        in: body
-        name: request
-        required: true
-        schema:
-          additionalProperties:
-            type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/comety.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 发送公告
-      tags:
-      - dontstarve_extra_control
-  /api/dontstarve/archive:
+  /api/v1/dst/archives:
     get:
       consumes:
       - application/json
@@ -385,13 +204,12 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/ent.DontStarveArchive'
+                    $ref: '#/definitions/store.Archive'
                   type: array
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 获取存档列表
       tags:
       - dontstarve_archive
@@ -403,8 +221,7 @@ paths:
         in: body
         name: request
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
@@ -415,16 +232,15 @@ paths:
             - $ref: '#/definitions/comety.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/ent.DontStarveArchive'
+                  $ref: '#/definitions/store.Archive'
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 创建存档
       tags:
       - dontstarve_archive
-  /api/dontstarve/archive/{id}:
+  /api/v1/dst/archives/{id}:
     delete:
       consumes:
       - application/json
@@ -443,8 +259,7 @@ paths:
             $ref: '#/definitions/comety.Response'
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 删除存档
       tags:
       - dontstarve_archive
@@ -467,12 +282,11 @@ paths:
             - $ref: '#/definitions/comety.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/ent.DontStarveArchive'
+                  $ref: '#/definitions/store.Archive'
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 获取存档详情
       tags:
       - dontstarve_archive
@@ -490,7 +304,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/ent.DontStarveArchive'
+          $ref: '#/definitions/store.Archive'
       produces:
       - application/json
       responses:
@@ -501,16 +315,15 @@ paths:
             - $ref: '#/definitions/comety.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/ent.DontStarveArchive'
+                  $ref: '#/definitions/store.Archive'
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 更新存档
       tags:
       - dontstarve_archive
-  /api/dontstarve/archive/download/{id}:
+  /api/v1/dst/archives/{id}/download:
     get:
       consumes:
       - application/json
@@ -529,116 +342,34 @@ paths:
             type: file
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 下载存档
       tags:
       - dontstarve_archive_transfer
-  /api/dontstarve/archive/enable/download:
-    get:
-      consumes:
-      - application/json
-      produces:
-      - application/octet-stream
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: file
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 下载当前启用的存档
-      tags:
-      - dontstarve_archive_enable
-  /api/dontstarve/archive/enable/upload:
+  /api/v1/dst/archives/{id}/enable:
     post:
       consumes:
-      - multipart/form-data
+      - application/json
       parameters:
-      - description: file
-        in: formData
-        name: file
+      - description: id
+        in: path
+        name: id
         required: true
-        type: file
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/comety.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/ent.DontStarveArchive'
-              type: object
+            $ref: '#/definitions/comety.Response'
         "500":
           description: Internal Server Error
-          schema:
-            type: object
-      summary: 上传、创建并启用存档
+          schema: {}
+      summary: 启用存档
       tags:
-      - dontstarve_archive_enable
-    put:
-      consumes:
-      - multipart/form-data
-      parameters:
-      - description: file
-        in: formData
-        name: file
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/comety.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/ent.DontStarveArchive'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 上传并更新当前启用的存档
-      tags:
-      - dontstarve_archive_enable
-  /api/dontstarve/archive/upload:
-    post:
-      consumes:
-      - multipart/form-data
-      parameters:
-      - description: file
-        in: formData
-        name: file
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/comety.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/ent.DontStarveArchive'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 上传并创建存档
-      tags:
-      - dontstarve_archive_transfer
-  /api/dontstarve/archive/upload/{id}:
+      - dontstarve_archive
+  /api/v1/dst/archives/{id}/upload:
     put:
       consumes:
       - multipart/form-data
@@ -663,16 +394,60 @@ paths:
             - $ref: '#/definitions/comety.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/ent.DontStarveArchive'
+                  $ref: '#/definitions/store.Archive'
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 上传并更新存档
       tags:
       - dontstarve_archive_transfer
-  /api/dontstarve/config:
+  /api/v1/dst/archives/enabled/download:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 下载当前启用的存档
+      tags:
+      - dontstarve_archive
+  /api/v1/dst/archives/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/comety.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/store.Archive'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 上传并创建存档
+      tags:
+      - dontstarve_archive_transfer
+  /api/v1/dst/config:
     get:
       consumes:
       - application/json
@@ -690,8 +465,7 @@ paths:
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 获取配置
       tags:
       - dontstarve_config
@@ -719,24 +493,21 @@ paths:
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 更新配置
       tags:
       - dontstarve_config
-  /api/dontstarve/mod:
-    delete:
+  /api/v1/dst/console/announce:
+    post:
       consumes:
       - application/json
       parameters:
-      - description: ids
+      - description: 公告内容
         in: body
         name: request
         required: true
         schema:
-          items:
-            type: string
-          type: array
+          $ref: '#/definitions/dstapi.AnnounceRequest'
       produces:
       - application/json
       responses:
@@ -746,100 +517,12 @@ paths:
             $ref: '#/definitions/comety.Response'
         "500":
           description: Internal Server Error
-          schema:
-            type: object
-      summary: 删除模组
+          schema: {}
+      summary: 发送公告
       tags:
-      - dontstarve_mod
-    get:
-      consumes:
-      - application/json
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/comety.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/ent.DontStarveMod'
-                  type: array
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 获取模组列表
-      tags:
-      - dontstarve_mod
-  /api/dontstarve/mod/{id}:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/comety.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/ent.DontStarveMod'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 获取模组详情
-      tags:
-      - dontstarve_mod
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: body
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/ent.DontStarveMod'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/comety.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/ent.DontStarveMod'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            type: object
-      summary: 更新模组
-      tags:
-      - dontstarve_mod
-  /api/dontstarve/player:
-    get:
+      - dontstarve_extra_control
+  /api/v1/dst/console/players:
+    post:
       consumes:
       - application/json
       produces:
@@ -858,12 +541,11 @@ paths:
               type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 获取玩家列表
       tags:
       - dontstarve_extra_control
-  /api/dontstarve/regenerate:
+  /api/v1/dst/console/regenerate:
     post:
       consumes:
       - application/json
@@ -876,36 +558,139 @@ paths:
             $ref: '#/definitions/comety.Response'
         "500":
           description: Internal Server Error
-          schema:
-            type: object
+          schema: {}
       summary: 重置世界
       tags:
       - dontstarve_extra_control
-  /api/dontstarve/rollback:
+  /api/v1/dst/console/rollback:
     post:
       consumes:
       - application/json
       parameters:
+      - description: 回滚天数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dstapi.RollbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/comety.Response'
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 回滚世界
+      tags:
+      - dontstarve_extra_control
+  /api/v1/dst/mods:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/comety.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/store.Mod'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 获取模组列表
+      tags:
+      - dontstarve_mod
+  /api/v1/dst/mods/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/comety.Response'
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 删除模组
+      tags:
+      - dontstarve_mod
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/comety.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/store.Mod'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 获取模组详情
+      tags:
+      - dontstarve_mod
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
       - description: body
         in: body
         name: request
         required: true
         schema:
-          additionalProperties:
-            type: integer
-          type: object
+          $ref: '#/definitions/store.Mod'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/comety.Response'
+            allOf:
+            - $ref: '#/definitions/comety.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/store.Mod'
+              type: object
         "500":
           description: Internal Server Error
-          schema:
-            type: object
-      summary: 回滚世界
+          schema: {}
+      summary: 更新模组
       tags:
-      - dontstarve_extra_control
+      - dontstarve_mod
 swagger: "2.0"

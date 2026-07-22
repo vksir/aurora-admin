@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/dontstarve/admin": {
+        "/api/v1/dst/admins": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -41,7 +41,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/ent.DontStarveAdmin"
+                                                "$ref": "#/definitions/store.Admin"
                                             }
                                         }
                                     }
@@ -51,9 +51,7 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             },
@@ -75,7 +73,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ent.DontStarveAdmin"
+                            "$ref": "#/definitions/store.Admin"
                         }
                     }
                 ],
@@ -91,7 +89,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/ent.DontStarveAdmin"
+                                            "$ref": "#/definitions/store.Admin"
                                         }
                                     }
                                 }
@@ -100,14 +98,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/admin/{id}": {
+        "/api/v1/dst/admins/{id}": {
             "delete": {
                 "consumes": [
                     "application/json"
@@ -137,56 +133,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/announce": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_extra_control"
-                ],
-                "summary": "发送公告",
-                "parameters": [
-                    {
-                        "description": "body",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/comety.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/dontstarve/archive": {
+        "/api/v1/dst/archives": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -212,7 +164,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/ent.DontStarveArchive"
+                                                "$ref": "#/definitions/store.Archive"
                                             }
                                         }
                                     }
@@ -222,9 +174,7 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             },
@@ -245,9 +195,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -262,7 +210,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/ent.DontStarveArchive"
+                                            "$ref": "#/definitions/store.Archive"
                                         }
                                     }
                                 }
@@ -271,14 +219,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/archive/download/{id}": {
+        "/api/v1/dst/archives/enabled/download": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -287,44 +233,7 @@ const docTemplate = `{
                     "application/octet-stream"
                 ],
                 "tags": [
-                    "dontstarve_archive_transfer"
-                ],
-                "summary": "下载存档",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "file"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/dontstarve/archive/enable/download": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/octet-stream"
-                ],
-                "tags": [
-                    "dontstarve_archive_enable"
+                    "dontstarve_archive"
                 ],
                 "summary": "下载当前启用的存档",
                 "responses": {
@@ -336,110 +245,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/archive/enable/upload": {
-            "put": {
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_archive_enable"
-                ],
-                "summary": "上传并更新当前启用的存档",
-                "parameters": [
-                    {
-                        "type": "file",
-                        "description": "file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/comety.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/ent.DontStarveArchive"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_archive_enable"
-                ],
-                "summary": "上传、创建并启用存档",
-                "parameters": [
-                    {
-                        "type": "file",
-                        "description": "file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/comety.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/ent.DontStarveArchive"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/dontstarve/archive/upload": {
+        "/api/v1/dst/archives/upload": {
             "post": {
                 "consumes": [
                     "multipart/form-data"
@@ -472,7 +283,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/ent.DontStarveArchive"
+                                            "$ref": "#/definitions/store.Archive"
                                         }
                                     }
                                 }
@@ -481,14 +292,216 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/archive/upload/{id}": {
+        "/api/v1/dst/archives/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_archive"
+                ],
+                "summary": "获取存档详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/comety.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/store.Archive"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_archive"
+                ],
+                "summary": "更新存档",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/store.Archive"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/comety.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/store.Archive"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_archive"
+                ],
+                "summary": "删除存档",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/comety.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/api/v1/dst/archives/{id}/download": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "dontstarve_archive_transfer"
+                ],
+                "summary": "下载存档",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/api/v1/dst/archives/{id}/enable": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_archive"
+                ],
+                "summary": "启用存档",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/comety.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/api/v1/dst/archives/{id}/upload": {
             "put": {
                 "consumes": [
                     "multipart/form-data"
@@ -528,7 +541,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/ent.DontStarveArchive"
+                                            "$ref": "#/definitions/store.Archive"
                                         }
                                     }
                                 }
@@ -537,154 +550,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/archive/{id}": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_archive"
-                ],
-                "summary": "获取存档详情",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/comety.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/ent.DontStarveArchive"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_archive"
-                ],
-                "summary": "更新存档",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "body",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ent.DontStarveArchive"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/comety.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/ent.DontStarveArchive"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_archive"
-                ],
-                "summary": "删除存档",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/comety.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/dontstarve/config": {
+        "/api/v1/dst/config": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -717,9 +588,7 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             },
@@ -766,15 +635,13 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/mod": {
-            "get": {
+        "/api/v1/dst/console/announce": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -782,61 +649,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "dontstarve_mod"
+                    "dontstarve_extra_control"
                 ],
-                "summary": "获取模组列表",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/comety.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/ent.DontStarveMod"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_mod"
-                ],
-                "summary": "删除模组",
+                "summary": "发送公告",
                 "parameters": [
                     {
-                        "description": "ids",
+                        "description": "公告内容",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/dstapi.AnnounceRequest"
                         }
                     }
                 ],
@@ -849,120 +672,13 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/mod/{id}": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_mod"
-                ],
-                "summary": "获取模组详情",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/comety.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/ent.DontStarveMod"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dontstarve_mod"
-                ],
-                "summary": "更新模组",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "body",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ent.DontStarveMod"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/comety.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/ent.DontStarveMod"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/dontstarve/player": {
-            "get": {
+        "/api/v1/dst/console/players": {
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -997,14 +713,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/regenerate": {
+        "/api/v1/dst/console/regenerate": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -1025,14 +739,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/dontstarve/rollback": {
+        "/api/v1/dst/console/rollback": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -1046,15 +758,12 @@ const docTemplate = `{
                 "summary": "回滚世界",
                 "parameters": [
                     {
-                        "description": "body",
+                        "description": "回滚天数",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "integer"
-                            }
+                            "$ref": "#/definitions/dstapi.RollbackRequest"
                         }
                     }
                 ],
@@ -1067,14 +776,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/{service}/status": {
+        "/api/v1/dst/mods": {
             "get": {
                 "consumes": [
                     "application/json"
@@ -1083,34 +790,25 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "service_status"
+                    "dontstarve_mod"
                 ],
-                "summary": "获取状态",
-                "parameters": [
-                    {
-                        "enum": [
-                            "dontstarve"
-                        ],
-                        "type": "string",
-                        "description": "service",
-                        "name": "service",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
+                "summary": "获取模组列表",
                 "responses": {
                     "200": {
-                        "description": "status: Inactive, Active, Starting, Stopping, WaitingActive, Abnormal",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/comety.Status"
+                                    "$ref": "#/definitions/comety.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
-                                        "status": {
-                                            "type": "string"
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/store.Mod"
+                                            }
                                         }
                                     }
                                 }
@@ -1119,15 +817,13 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
         },
-        "/api/{service}/{action}": {
-            "post": {
+        "/api/v1/dst/mods/{id}": {
+            "get": {
                 "consumes": [
                     "application/json"
                 ],
@@ -1135,32 +831,113 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "service_control"
+                    "dontstarve_mod"
                 ],
-                "summary": "服务控制",
+                "summary": "获取模组详情",
                 "parameters": [
                     {
-                        "enum": [
-                            "dontstarve"
-                        ],
                         "type": "string",
-                        "description": "service",
-                        "name": "service",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/comety.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/store.Mod"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_mod"
+                ],
+                "summary": "更新模组",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "enum": [
-                            "start",
-                            "stop",
-                            "restart",
-                            "install",
-                            "uninstall",
-                            "update"
-                        ],
+                        "description": "body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/store.Mod"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/comety.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/store.Mod"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_mod"
+                ],
+                "summary": "删除模组",
+                "parameters": [
+                    {
                         "type": "string",
-                        "description": "action",
-                        "name": "action",
+                        "description": "id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1174,9 +951,7 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -1195,11 +970,19 @@ const docTemplate = `{
                 }
             }
         },
-        "comety.Status": {
+        "dstapi.AnnounceRequest": {
             "type": "object",
             "properties": {
-                "status": {
+                "message": {
                     "type": "string"
+                }
+            }
+        },
+        "dstapi.RollbackRequest": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer"
                 }
             }
         },
@@ -1220,46 +1003,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dstety.DontStarveModConfig": {
-            "type": "object",
-            "properties": {
-                "hover": {
-                    "type": "string"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "option": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dstety.DontStarveModConfigOption"
-                    }
-                }
-            }
-        },
-        "dstety.DontStarveModConfigOption": {
-            "type": "object",
-            "properties": {
-                "default": {
-                    "type": "boolean"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "hover": {
-                    "type": "string"
-                },
-                "string": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
         "dstety.DontStarveWorld": {
             "type": "object",
             "properties": {
@@ -1274,80 +1017,63 @@ const docTemplate = `{
                 }
             }
         },
-        "ent.DontStarveAdmin": {
+        "store.Admin": {
             "type": "object",
             "properties": {
                 "created_at": {
-                    "description": "CreatedAt holds the value of the \"created_at\" field.",
                     "type": "string"
                 },
                 "id": {
-                    "description": "ID of the ent.",
                     "type": "string"
                 },
                 "klei_id": {
-                    "description": "KleiID holds the value of the \"klei_id\" field.",
                     "type": "string"
                 },
                 "name": {
-                    "description": "Name holds the value of the \"name\" field.",
                     "type": "string"
                 },
                 "updated_at": {
-                    "description": "UpdatedAt holds the value of the \"updated_at\" field.",
                     "type": "string"
                 }
             }
         },
-        "ent.DontStarveArchive": {
+        "store.Archive": {
             "type": "object",
             "properties": {
                 "cluster_description": {
-                    "description": "ClusterDescription holds the value of the \"cluster_description\" field.",
                     "type": "string"
                 },
                 "cluster_name": {
-                    "description": "ClusterName holds the value of the \"cluster_name\" field.",
                     "type": "string"
                 },
                 "cluster_password": {
-                    "description": "ClusterPassword holds the value of the \"cluster_password\" field.",
                     "type": "string"
                 },
                 "created_at": {
-                    "description": "CreatedAt holds the value of the \"created_at\" field.",
                     "type": "string"
                 },
-                "edges": {
-                    "description": "Edges holds the relations/edges for other nodes in the graph.\nThe values are being populated by the DontStarveArchiveQuery when eager-loading is set.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/ent.DontStarveArchiveEdges"
-                        }
-                    ]
-                },
                 "id": {
-                    "description": "ID of the ent.",
                     "type": "string"
                 },
                 "max_players": {
-                    "description": "MaxPlayers holds the value of the \"max_players\" field.",
                     "type": "integer"
                 },
+                "mods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.Mod"
+                    }
+                },
                 "pvp": {
-                    "description": "Pvp holds the value of the \"pvp\" field.",
                     "type": "boolean"
                 },
                 "remark": {
-                    "description": "Remark holds the value of the \"remark\" field.",
                     "type": "string"
                 },
                 "updated_at": {
-                    "description": "UpdatedAt holds the value of the \"updated_at\" field.",
                     "type": "string"
                 },
                 "world": {
-                    "description": "World holds the value of the \"world\" field.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/dstety.DontStarveWorld"
@@ -1355,99 +1081,44 @@ const docTemplate = `{
                 }
             }
         },
-        "ent.DontStarveArchiveEdges": {
-            "type": "object",
-            "properties": {
-                "mods": {
-                    "description": "Mods holds the value of the mods edge.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ent.DontStarveMod"
-                    }
-                }
-            }
-        },
-        "ent.DontStarveMod": {
-            "type": "object",
-            "properties": {
-                "author": {
-                    "description": "Author holds the value of the \"author\" field.",
-                    "type": "string"
-                },
-                "config": {
-                    "description": "Config holds the value of the \"config\" field.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/dstety.DontStarveModConfig"
-                    }
-                },
-                "created_at": {
-                    "description": "CreatedAt holds the value of the \"created_at\" field.",
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Description holds the value of the \"description\" field.",
-                    "type": "string"
-                },
-                "downloaded": {
-                    "description": "Downloaded holds the value of the \"downloaded\" field.",
-                    "type": "boolean"
-                },
-                "edges": {
-                    "description": "Edges holds the relations/edges for other nodes in the graph.\nThe values are being populated by the DontStarveModQuery when eager-loading is set.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/ent.DontStarveModEdges"
-                        }
-                    ]
-                },
-                "id": {
-                    "description": "ID of the ent.",
-                    "type": "string"
-                },
-                "image": {
-                    "description": "Image holds the value of the \"image\" field.",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name holds the value of the \"name\" field.",
-                    "type": "string"
-                },
-                "raw_config": {
-                    "description": "RawConfig holds the value of the \"raw_config\" field.",
-                    "type": "string"
-                },
-                "time_created": {
-                    "description": "TimeCreated holds the value of the \"time_created\" field.",
-                    "type": "integer"
-                },
-                "time_updated": {
-                    "description": "TimeUpdated holds the value of the \"time_updated\" field.",
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "description": "UpdatedAt holds the value of the \"updated_at\" field.",
-                    "type": "string"
-                },
-                "version": {
-                    "description": "Version holds the value of the \"version\" field.",
-                    "type": "string"
-                },
-                "workshop_id": {
-                    "description": "WorkshopID holds the value of the \"workshop_id\" field.",
-                    "type": "string"
-                }
-            }
-        },
-        "ent.DontStarveModEdges": {
+        "store.Mod": {
             "type": "object",
             "properties": {
                 "archives": {
-                    "description": "Archives holds the value of the archives edge.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/ent.DontStarveArchive"
+                        "$ref": "#/definitions/store.Archive"
                     }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "raw_config": {
+                    "type": "string"
+                },
+                "time_created": {
+                    "type": "integer"
+                },
+                "time_updated": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workshop_id": {
+                    "type": "string"
                 }
             }
         }
@@ -1458,7 +1129,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "0.0.0.0:5800",
-	BasePath:         "/",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "Aurora Admin",
 	Description:      "Aurora Admin API",

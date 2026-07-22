@@ -135,7 +135,7 @@ func (d *Api) ListArchive(c *gin.Context) {
 // @Accept			json
 // @Produce			json
 // @Param			request body any true "body"
-// @Success			200 {object} comety.Response{data=ent.DontStarveArchive}
+// @Success			200 {object} comety.Response{data=store.Archive}
 // @Failure			500 {object} any
 // @Router			/api/v1/dst/archives [post]
 func (d *Api) CreateArchive(c *gin.Context) {
@@ -198,7 +198,7 @@ func (d *Api) DeleteArchive(c *gin.Context) {
 // @Accept			multipart/form-data
 // @Produce			json
 // @Param			file formData file true "file"
-// @Success			200 {object} comety.Response{data=ent.DontStarveArchive}
+// @Success			200 {object} comety.Response{data=store.Archive}
 // @Failure			500 {object} any
 // @Router			/api/v1/dst/archives/upload [post]
 func (d *Api) UploadCreateArchive(c *gin.Context) {
@@ -301,7 +301,7 @@ func (d *Api) ListMod(c *gin.Context) {
 // @Accept			json
 // @Produce			json
 // @Param			id path string true "id"
-// @Success			200 {object} comety.Response{data=ent.DontStarveMod}
+// @Success			200 {object} comety.Response{data=store.Mod}
 // @Failure			500 {object} any
 // @Router			/api/v1/dst/mods/{id} [get]
 func (d *Api) GetMod(c *gin.Context) {
