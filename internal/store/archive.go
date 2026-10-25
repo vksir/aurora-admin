@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -75,31 +76,66 @@ func (db *DB) GetArchive(ctx context.Context, id string) (*Archive, error) {
 }
 
 func (db *DB) ListArchives(ctx context.Context) ([]*Archive, error) {
+	// 单条 JOIN 查询同时取回存档与模组，避免 N+1（原来每个存档额外查一次 mods）。
 	rows, err := db.Query(ctx,
-		`SELECT id, created_at, updated_at, remark, cluster_name, cluster_password, cluster_description, max_players, pvp, world
-		 FROM dont_starve_archives ORDER BY created_at DESC`)
+		`SELECT a.id, a.created_at, a.updated_at, a.remark, a.cluster_name, a.cluster_password, a.cluster_description, a.max_players, a.pvp, a.world,
+		        m.id, m.created_at, m.updated_at, m.workshop_id, m.name, m.description, m.image, m.time_created, m.time_updated, m.raw_config
+		 FROM dont_starve_archives a
+		 LEFT JOIN archive_mods am ON am.archive_id = a.id
+		 LEFT JOIN dont_starve_mods m ON m.id = am.mod_id
+		 ORDER BY a.created_at DESC, m.created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var archives []*Archive
+	index := make(map[string]*Archive)
 	for rows.Next() {
 		a := &Archive{}
 		var worldJSON string
-		err := rows.Scan(&a.ID, &a.CreatedAt, &a.UpdatedAt, &a.Remark, &a.ClusterName, &a.ClusterPassword, &a.ClusterDescription, &a.MaxPlayers, &a.Pvp, &worldJSON)
+		var (
+			modID          sql.NullString
+			modCreatedAt   sql.NullTime
+			modUpdatedAt   sql.NullTime
+			modWorkshopID  sql.NullString
+			modName        sql.NullString
+			modDescription sql.NullString
+			modImage       sql.NullString
+			modTimeCreated sql.NullInt64
+			modTimeUpdated sql.NullInt64
+			modRawConfig   sql.NullString
+		)
+		err := rows.Scan(&a.ID, &a.CreatedAt, &a.UpdatedAt, &a.Remark, &a.ClusterName, &a.ClusterPassword, &a.ClusterDescription, &a.MaxPlayers, &a.Pvp, &worldJSON,
+			&modID, &modCreatedAt, &modUpdatedAt, &modWorkshopID, &modName, &modDescription, &modImage, &modTimeCreated, &modTimeUpdated, &modRawConfig)
 		if err != nil {
 			return nil, err
 		}
-		if worldJSON != "" {
-			json.Unmarshal([]byte(worldJSON), &a.World)
+
+		cur, ok := index[a.ID]
+		if !ok {
+			if worldJSON != "" {
+				_ = json.Unmarshal([]byte(worldJSON), &a.World)
+			}
+			archives = append(archives, a)
+			index[a.ID] = a
+			cur = a
 		}
-		// Load mods
-		a.Mods, err = db.getArchiveMods(ctx, a.ID)
-		if err != nil {
-			return nil, err
+
+		if modID.Valid { // LEFT JOIN 无关联行时 mod id 为 NULL，跳过
+			cur.Mods = append(cur.Mods, &Mod{
+				ID:          modID.String,
+				CreatedAt:   modCreatedAt.Time,
+				UpdatedAt:   modUpdatedAt.Time,
+				WorkshopID:  modWorkshopID.String,
+				Name:        modName.String,
+				Description: modDescription.String,
+				Image:       modImage.String,
+				TimeCreated: modTimeCreated.Int64,
+				TimeUpdated: modTimeUpdated.Int64,
+				RawConfig:   modRawConfig.String,
+			})
 		}
-		archives = append(archives, a)
 	}
 	return archives, rows.Err()
 }

@@ -6,4 +6,4 @@ Issues 以本地 Markdown 文件管理，存放在 `.scratch/<feature-slug>/` �
 
 ### Domain docs
 
-单上下文（single-context）：`CONTEXT.md` + `docs/adr/` 在仓库根目录。详见 `docs/agents/domain.md`。
+单上下文（single-context）：`GLOSSARY.md` + `docs/adr/` 在仓库根目录。详见 `docs/agents/domain.md`。

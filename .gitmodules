@@ -1,0 +1,4 @@
+[submodule "aurora-admin-web"]
+	path = aurora-admin-web
+	url = git@github.com:vksir/aurora-admin-web.git
+	branch = dev

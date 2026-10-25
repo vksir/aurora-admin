@@ -3,11 +3,13 @@ package steam
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-resty/resty/v2"
+
 	"aurora-admin/pkg/util/errutil"
 )
 
@@ -357,8 +359,22 @@ func GetNewsForApp(appId string) (GetNewsForAppResponse, error) {
 	return res, err
 }
 
+// httpClient 为包级共享客户端，复用连接池，
+// 避免每次请求重建 TCP/TLS 连接（每次握手约多耗 100ms+）。
+var httpClient = resty.New().
+	SetTimeout(10 * time.Second).
+	SetTransport(&http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           (&net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		MaxIdleConns:          10,
+		MaxIdleConnsPerHost:   4,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	})
+
 func request(method, url string, data map[string]string, a any) error {
-	client := resty.New().SetTimeout(5 * time.Second).R()
+	client := httpClient.R()
 	if method == http.MethodGet {
 		client.SetQueryParams(data)
 	} else {

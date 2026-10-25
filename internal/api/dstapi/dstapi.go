@@ -5,6 +5,7 @@ import (
 	"aurora-admin/internal/entity/dstety"
 	"aurora-admin/internal/plugin/dontstarve"
 	"aurora-admin/internal/store"
+	"aurora-admin/pkg/registry"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -48,6 +49,8 @@ func (d *Api) Load(g *gin.RouterGroup) {
 		dst.GET("/mods/:id", d.GetMod)
 		dst.PUT("/mods/:id", d.UpdateMod)
 		dst.DELETE("/mods/:id", d.DeleteMod)
+		dst.POST("/mods/check-update", d.CheckModUpdate)
+		dst.POST("/mods/update", d.UpdateMods)
 
 		// Admins
 		dst.GET("/admins", d.ListAdmin)
@@ -355,6 +358,38 @@ func (d *Api) DeleteMod(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
 	}
+	c.JSON(http.StatusOK, comety.Response{})
+}
+
+// CheckModUpdate
+// @Summary			检测模组更新
+// @Description		对比 Workshop 与本地记录，返回需要更新的模组列表（不执行更新）
+// @Tags			dontstarve_mod
+// @Accept			json
+// @Produce			json
+// @Success			200 {object} comety.Response{data=[]dontstarve.ModUpdateStatus}
+// @Failure			500 {object} any
+// @Router			/api/v1/dst/mods/check-update [post]
+func (d *Api) CheckModUpdate(c *gin.Context) {
+	res, err := d.plugin.CheckModUpdates(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, comety.Response{Data: res})
+}
+
+// UpdateMods
+// @Summary			触发模组更新
+// @Description		异步触发模组更新流程（检测->下载->安装->无人时重启）。有玩家在线时等待玩家下线
+// @Tags			dontstarve_mod
+// @Accept			json
+// @Produce			json
+// @Success			200 {object} comety.Response
+// @Failure			500 {object} any
+// @Router			/api/v1/dst/mods/update [post]
+func (d *Api) UpdateMods(c *gin.Context) {
+	registry.TriggerCronJob(c, dontstarve.ModUpdateCronJobName)
 	c.JSON(http.StatusOK, comety.Response{})
 }
 

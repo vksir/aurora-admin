@@ -13,6 +13,7 @@ import (
 const (
 	PluginName            = "dontstarve"
 	AutoUpdateCronJobName = "dontstarve_autoupdate"
+	ModUpdateCronJobName  = "dontstarve_modupdate"
 
 	AppId       = "322330"
 	ServerAppId = "343050"
@@ -21,7 +22,14 @@ const (
 	ShardCaves  = "Caves"
 
 	AutoupdateCronJobInterval = 1800
+	ModUpdateCronJobInterval  = 1800
 	AutoupdateNotifyInterval  = 300
+)
+
+// 自动更新期间的游戏内公告文案
+const (
+	msgServerUpdateLogout = iconEye + " The server requires an update. Please log out immediately. " + iconEye
+	msgModUpdateLogout    = iconEye + " The server requires a mod update. Please log out immediately. " + iconEye
 )
 
 // --- path functions (replaces pathHelper struct hierarchy) ---

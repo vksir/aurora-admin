@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -92,8 +93,11 @@ func serveHttp(a *application) *http.Server {
 	log.InfoF("listen: %s", listen)
 
 	srv := &http.Server{
-		Addr:    listen,
-		Handler: e,
+		Addr:              listen,
+		Handler:           e,
+		ReadHeaderTimeout: 10 * time.Second, // 防慢速头部攻击占用连接
+		IdleTimeout:       120 * time.Second,
+		// 注意：不设 ReadTimeout/WriteTimeout，存档上传/下载是长耗时流式传输
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

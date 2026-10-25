@@ -15,6 +15,12 @@ import (
 	"aurora-admin/pkg/steam"
 )
 
+// 预编译正则，避免每次解析 mod 配置时重复编译。
+var (
+	modEntryRegex = regexp.MustCompile(`\[["']workshop-(\d+)["']\]\s*=\s*\{`)
+	enabledRegex  = regexp.MustCompile(`\benabled\s*=\s*true`)
+)
+
 func (p *Plugin) createModFromModOverrides(ctx context.Context, content []byte) ([]*store.Mod, error) {
 	workshopID2Config, err := parseModLuaByRegex(string(content))
 	if err != nil {
@@ -140,9 +146,6 @@ func parseModLuaByRegex(content string) (map[string]string, error) {
 	result := make(map[string]string)
 
 	// 匹配 ["workshop-XXXX"] = { 开始位置，支持单引号或双引号
-	modEntryRegex := regexp.MustCompile(`\[["']workshop-(\d+)["']\]\s*=\s*\{`)
-	enabledRegex := regexp.MustCompile(`\benabled\s*=\s*true`)
-
 	matches := modEntryRegex.FindAllStringSubmatchIndex(content, -1)
 
 	for _, match := range matches {

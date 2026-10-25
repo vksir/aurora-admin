@@ -11,6 +11,9 @@ type cacheDontstarve struct {
 	Token            string `json:"token"`
 	TickRate         int    `json:"tick_rate"`
 	PassWord         string `json:"password"`
+	// LastRunBuildID 本次服务启动时对应的游戏 buildid（appmanifest），
+	// 用于自动更新时检测“文件已更新但运行中进程仍旧版”
+	LastRunBuildID int `json:"last_run_build_id"`
 }
 
 type Cache struct {

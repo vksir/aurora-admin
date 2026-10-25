@@ -13,20 +13,23 @@ type DB struct {
 }
 
 func Open(path string) (*DB, error) {
-	dsn := fmt.Sprintf("file:%s?cache=shared&_pragma=foreign_keys(1)", path)
+	// WAL 模式：读写可并发，写入只需单次 fsync（配合 synchronous=NORMAL），
+	// 相比默认 journal(DELETE) 模式每次写事务多次 fsync，写入吞吐显著提升。
+	// busy_timeout：并发写竞争时等待而非立刻报 database is locked。
+	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)&_pragma=foreign_keys(1)", path)
+	return openDSN(dsn)
+}
+
+func OpenMemory() (*DB, error) {
+	return openDSN("file:ent?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+}
+
+func openDSN(dsn string) (*DB, error) {
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
 	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-	return &DB{DB: db}, nil
-}
-
-func OpenMemory() (*DB, error) {
-	db, err := sql.Open("sqlite", "file:ent?mode=memory&cache=shared&_pragma=foreign_keys(1)")
-	if err != nil {
 		return nil, err
 	}
 	return &DB{DB: db}, nil

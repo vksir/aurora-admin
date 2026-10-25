@@ -22,11 +22,13 @@ import (
 type Plugin struct {
 	svc          *service.Service
 	autoupdate   *autoupdateHelper
+	modupdate    *modUpdateHelper
 	logger       *log.Logger
 	db           *store.DB
 	config       *cfg.Config
 	state        *cache.State
 	transferLock *sync.Mutex
+	updateMu     sync.Mutex
 }
 
 func NewPlugin(db *store.DB, config *cfg.Config, state *cache.State, logger *log.Logger) *Plugin {
@@ -39,8 +41,10 @@ func NewPlugin(db *store.DB, config *cfg.Config, state *cache.State, logger *log
 	}
 	p.svc = service.New(p, logger)
 	p.autoupdate = newAutoupdateHelper(p, logger)
+	p.modupdate = newModUpdateHelper(p, logger)
 
 	p.autoupdate.RegisterCronJob()
+	p.modupdate.RegisterCronJob()
 	return p
 }
 
@@ -119,6 +123,15 @@ func (p *Plugin) PrepareProcess(ctx context.Context,
 	err = d.DeployBeforeStart(ctx)
 	if err != nil {
 		return nil, errutil.Wrap(err)
+	}
+
+	// 记录本次启动对应的游戏 buildid，供自动更新检测
+	// “文件已更新但运行中进程仍旧版”的场景
+	if buildID, err := readCurrentBuildID(); err == nil {
+		p.state.DontStarve.LastRunBuildID = buildID
+		p.state.Save()
+	} else {
+		p.logger.WarnC(ctx, "record last run build id failed", "err", err)
 	}
 
 	process := make(map[string]*service.SubProcess)

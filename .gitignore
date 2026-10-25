@@ -2,3 +2,4 @@
 *.exe
 assets/web/*
 .scratch/
+.workspace
