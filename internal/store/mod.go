@@ -127,5 +127,5 @@ func scanMods(rows *sql.Rows) ([]*Mod, error) {
 		}
 		mods = append(mods, m)
 	}
-	return mods, rows.Err()
+	return nonNil(mods), rows.Err()
 }

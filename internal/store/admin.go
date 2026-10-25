@@ -46,7 +46,7 @@ func (db *DB) ListAdmins(ctx context.Context) ([]*Admin, error) {
 		}
 		admins = append(admins, a)
 	}
-	return admins, rows.Err()
+	return nonNil(admins), rows.Err()
 }
 
 func (db *DB) DeleteAdmin(ctx context.Context, id string) error {

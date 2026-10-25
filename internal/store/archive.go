@@ -137,7 +137,7 @@ func (db *DB) ListArchives(ctx context.Context) ([]*Archive, error) {
 			})
 		}
 	}
-	return archives, rows.Err()
+	return nonNil(archives), rows.Err()
 }
 
 func (db *DB) UpdateArchive(ctx context.Context, a *Archive) (*Archive, error) {

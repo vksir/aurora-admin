@@ -69,6 +69,9 @@ func (p *Plugin) GetPlayers(ctx context.Context) ([]string, error) {
 		}
 		return nil
 	})
+	if players == nil {
+		players = []string{}
+	}
 	return players, err
 }
 
