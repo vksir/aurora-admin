@@ -1,48 +1,70 @@
 package dstety
 
 import (
-	"aurora-admin/internal/entity/comety"
+	"time"
 )
 
+// Model 内联自原 vkiss-lib/pkg/database.Model，避免引入 gorm 依赖
+type Model struct {
+	ID        string    `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type DontStarveAdmin struct {
-	comety.Model
+	Model
 	Remark string `json:"remark"`
-	KleiId string `gorm:"unique" json:"klei_id"`
-	Enable bool   `json:"enable"`
+	KleiId string `json:"klei_id"`
 }
 
 type DontStarveArchive struct {
-	comety.Model
+	Model
+	Remark             string `json:"remark"`
 	ClusterName        string `json:"cluster_name"`
 	ClusterPassword    string `json:"cluster_password"`
 	ClusterDescription string `json:"cluster_description"`
-	MaxPlayers         string `json:"max_players"`
-	Pvp                string `json:"pvp"`
+	MaxPlayers         int    `json:"max_players"`
+	Pvp                bool   `json:"pvp"`
 
-	Worlds []DontStarveWorld        `json:"worlds"`
-	Mods   []DontStarveModInArchive `json:"mods"`
+	World        []DontStarveWorld        `json:"world"`
+	ModInArchive []DontStarveModInArchive `json:"mod_in_archive"`
 }
 
 const (
-	DontStarveWorldTypeMaster = "Master"
-	DontStarveWorldTypeCaves  = "Caves"
+	WorldTypeMaster = "Master"
+	WorldTypeCaves  = "Caves"
 )
 
 type DontStarveWorld struct {
-	comety.Model
 	Type          string `json:"type"`
 	ServerConfig  string `json:"server_config"`
 	WorldOverride string `json:"world_override"`
+}
 
-	// 外键
-	DontStarveArchiveID string `json:"dont_starve_archive_id"`
+type DontStarveModConfigInArchive struct {
+	Model
+
+	// Mod 未下载时填写，Mod 下载后将值置空
+	Name string `json:"name"`
+	LuaValue
+
+	// 外键 DontStarveModInArchive
+	DontStarveModInArchiveID string `json:"dont_starve_mod_in_archive_id"`
+
+	// 外键 Belongs To
+	ModConfigID string              `json:"mod_config_id"`
+	ModConfig   DontStarveModConfig `json:"mod_config"`
+
+	// 外键 Belongs To
+	ModConfigOptionID string                    `json:"mod_config_option_id"`
+	ModConfigOption   DontStarveModConfigOption `json:"mod_config_option"`
 }
 
 type DontStarveModInArchive struct {
-	comety.Model
-	CurrentConfig string `json:"current_config"`
+	Model
+	ConfigInArchive []DontStarveModConfigInArchive `json:"config_in_archive"`
 
-	// 外键
+	// 外键 DontStarveArchive
 	DontStarveArchiveID string `json:"dont_starve_archive_id"`
 
 	// 外键 Belongs To
@@ -50,16 +72,54 @@ type DontStarveModInArchive struct {
 	Mod   DontStarveMod `json:"mod"`
 }
 
-type DontStarveMod struct {
-	comety.Model
-	WorkshopId string `gorm:"unique" json:"workshop_id"`
-	Name       string `json:"name"`
-	Config     string `json:"config"`
+type DontStarveModConfigOption struct {
+	Description string `json:"description"`
+	Hover       string `json:"hover"`
+	Default     bool   `json:"default"`
+	LuaValue
 }
 
-func (d *DontStarveMod) ToInArchive(archId string) DontStarveModInArchive {
-	return DontStarveModInArchive{
-		CurrentConfig: d.Config,
-		ModID:         d.ID,
+type DontStarveModConfig struct {
+	Name   string                      `json:"name"`
+	Label  string                      `json:"label"`
+	Hover  string                      `json:"hover"`
+	Option []DontStarveModConfigOption `json:"option"`
+}
+
+func (m *DontStarveModConfig) FindOptionByLuaValueString(v string) (DontStarveModConfigOption, bool) {
+	for i := range m.Option {
+		if m.Option[i].LuaValue.String == v {
+			return m.Option[i], true
+		}
 	}
+	return DontStarveModConfigOption{}, false
+}
+
+type DontStarveMod struct {
+	Model
+	WorkshopId string `json:"workshop_id"`
+
+	// From Api
+	Name        string `json:"name"`
+	TimeCreated int    `json:"time_created"`
+	TimeUpdated int    `json:"time_updated"`
+	Image       string `json:"image"`
+
+	// From Lua
+	Description string                `json:"description"`
+	Author      string                `json:"author"`
+	Version     string                `json:"version"`
+	Config      []DontStarveModConfig `json:"config"`
+
+	// Mod 是否下载
+	Download bool `json:"download"`
+}
+
+func (m *DontStarveMod) FindConfigByName(n string) (DontStarveModConfig, bool) {
+	for i := range m.Config {
+		if m.Config[i].Name == n {
+			return m.Config[i], true
+		}
+	}
+	return DontStarveModConfig{}, false
 }

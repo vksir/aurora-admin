@@ -1,0 +1,31 @@
+[Unit]
+Description = {{.Description}}
+After = network.target
+Wants = network.target
+
+[Service]
+Type = simple
+KillMode=control-group
+
+{{- if .WorkingDirectory}}
+WorkingDirectory={{.WorkingDirectory}}
+{{- end}}
+
+{{- if .ExecStart}}
+ExecStart={{.ExecStart}}
+{{- end}}
+
+{{- if .Restart}}
+Restart=on-failure
+{{- end}}
+
+{{- if .User}}
+User={{.User}}
+{{- end}}
+
+{{- if .Group}}
+Group={{.Group}}
+{{- end}}
+
+[Install]
+WantedBy = multi-user.target

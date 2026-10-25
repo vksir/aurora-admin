@@ -46,10 +46,25 @@ rm steamcmd_linux.tar.gz
 
 ```
 
-## Swag
+## Dev
+
+### Build
 
 ```shell
-swag init -g ./internal/controller/http/router.go -o ./docs/ -p snakecase
+# Linux amd64
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o aurora-admin-linux-amd64 .
+```
+
+### Swag
+
+```shell
+swag init -g ./internal/app/http.go -o ./docs/ -p snakecase
+```
+
+### Ent
+
+```shell
+go generate ./ent
 ```
 
 ## Support

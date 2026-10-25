@@ -1,1 +1,5 @@
 .idea/
+*.exe
+assets/web/*
+.scratch/
+.workspace

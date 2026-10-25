@@ -1,20 +1,16 @@
 package workspace
 
 import (
-	"github.com/vksir/vkiss-lib/pkg/util/errutil"
+	"aurora-admin/pkg/util/errutil"
+	"aurora-admin/pkg/util/fileutil"
 	"os"
 	"path/filepath"
 )
 
 var ws string
-var home string
 
 func Ws() string {
 	return ws
-}
-
-func Home() string {
-	return home
 }
 
 func ServiceDir() string {
@@ -37,15 +33,17 @@ func LogPath() string {
 	return filepath.Join(LogDir(), "aurora-admin.log")
 }
 
+func TempDir() string {
+	return filepath.Join(ws, "tmp")
+}
+
 func Init(workspace string) {
 	ws = workspace
-	dirs := []string{ws, ServiceDir(), LogDir()}
+	dirs := []string{ws, ServiceDir(), LogDir(), TempDir()}
 	for _, d := range dirs {
 		err := os.MkdirAll(d, 0o755)
-		errutil.Check(err)
+		errutil.Fatal(err)
 	}
-
-	var err error
-	home, err = os.UserHomeDir()
-	errutil.Check(err)
+	err := fileutil.ClearDir(TempDir())
+	errutil.Fatal(err)
 }
