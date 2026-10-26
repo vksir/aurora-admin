@@ -162,7 +162,78 @@ func (p *Plugin) UpdateArchive(ctx context.Context, arch *store.Archive) (*store
 }
 
 func (p *Plugin) GetArchive(ctx context.Context, id string) (*store.Archive, error) {
-	return p.db.GetArchive(ctx, id)
+	arch, err := p.db.GetArchive(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	p.fillArchiveModsFromDisk(ctx, arch)
+	return arch, nil
+}
+
+// fillArchiveModsFromDisk 兼容旧存档：早期版本的存档没有写入 archive_mods 关联，
+// 只按数据库关联判断会把已启用的模组显示为全部禁用，保存时还会把关联清空。
+// 这里在读取存档时按需从存档目录的 Master/modoverrides.lua 回填关联（只补不删）。
+func (p *Plugin) fillArchiveModsFromDisk(ctx context.Context, arch *store.Archive) {
+	if len(arch.Mods) > 0 {
+		return
+	}
+	mods, err := p.backfillArchiveMods(ctx, arch)
+	if err != nil {
+		log.WarnC(ctx, "backfill archive mods from disk failed", "archive", arch.ID, "err", err)
+		return
+	}
+	if len(mods) > 0 {
+		arch.Mods = mods
+	}
+}
+
+// backfillArchiveMods 解析存档目录中的 modoverrides.lua，把其中启用的模组写入
+// 模组库并与存档建立关联。模组已在库中时不覆盖其配置（配置按模组维度共享）。
+func (p *Plugin) backfillArchiveMods(ctx context.Context, arch *store.Archive) ([]*store.Mod, error) {
+	root := clusterRoot(arch.ID)
+	if !fileutil.Exist(root) {
+		return nil, nil
+	}
+
+	rawModOverrides, err := fileutil.Read(filepath.Join(root, ShardMaster, "modoverrides.lua"))
+	if err != nil {
+		return nil, errutil.Wrap(err)
+	}
+	workshopID2Config, err := parseModLuaByRegex(string(rawModOverrides))
+	if err != nil {
+		return nil, errutil.Wrap(err)
+	}
+	if len(workshopID2Config) == 0 {
+		return nil, nil
+	}
+
+	var mods []*store.Mod
+	err = p.db.WithTx(ctx, func(ctx context.Context, _ *sql.Tx) error {
+		for workshopID, rawConfig := range workshopID2Config {
+			mod, err := p.db.GetModByWorkshopID(ctx, workshopID)
+			if err == sql.ErrNoRows {
+				mod = &store.Mod{WorkshopID: workshopID, RawConfig: rawConfig}
+				mod, err = p.db.CreateMod(ctx, mod)
+			}
+			if err != nil {
+				return errutil.Wrap(err)
+			}
+			mods = append(mods, mod)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errutil.Wrap(err)
+	}
+
+	modIDs := make([]string, 0, len(mods))
+	for _, mod := range mods {
+		modIDs = append(modIDs, mod.ID)
+	}
+	if err := p.db.AddArchiveMods(ctx, arch.ID, modIDs); err != nil {
+		return nil, errutil.Wrap(err)
+	}
+	return mods, nil
 }
 
 func (p *Plugin) createArchiveFromDisk(ctx context.Context, path string, archName string) (*store.Archive, error) {

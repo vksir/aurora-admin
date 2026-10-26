@@ -3,9 +3,12 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -40,6 +43,55 @@ type LoggerConfig struct {
 	Skip gin.Skipper
 }
 
+// sensitiveKeyPattern 匹配需要脱敏的 JSON 字段名（密码、令牌、密钥等），
+// 避免登录密码、JWT、集群密码等以明文形式落进日志文件。
+var sensitiveKeyPattern = regexp.MustCompile(`(?i)pass|token|secret|jwt|authorization|cookie`)
+
+// maskSensitiveJSON 对 JSON 请求/响应体做字段级脱敏。
+// 非 JSON 内容（表单、二进制等）原样返回，避免影响日志可读性。
+func maskSensitiveJSON(body string) string {
+	trimmed := strings.TrimSpace(body)
+	if trimmed == "" {
+		return body
+	}
+	if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+		return body
+	}
+
+	var v any
+	if err := json.Unmarshal([]byte(trimmed), &v); err != nil {
+		// 可能因日志截断导致 JSON 不完整，这种情况下无法安全脱敏，直接丢弃内容
+		return "<unparsable body, omitted>"
+	}
+
+	masked, err := json.Marshal(maskValue(v))
+	if err != nil {
+		return "<unparsable body, omitted>"
+	}
+	return string(masked)
+}
+
+func maskValue(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, val := range t {
+			if sensitiveKeyPattern.MatchString(k) {
+				t[k] = "***"
+				continue
+			}
+			t[k] = maskValue(val)
+		}
+		return t
+	case []any:
+		for i := range t {
+			t[i] = maskValue(t[i])
+		}
+		return t
+	default:
+		return v
+	}
+}
+
 var defaultLogFormatter = func(params LogFormatterParams, logger *log.Logger) {
 	var level slog.Level
 	if params.StatusCode < http.StatusBadRequest {
@@ -58,8 +110,8 @@ var defaultLogFormatter = func(params LogFormatterParams, logger *log.Logger) {
 		slog.String("method", params.Method),
 		slog.Duration("latency", params.Latency),
 		slog.String("client", params.ClientIP),
-		slog.String("request", params.RequestBody),
-		slog.String("response", params.ResponseBody.String()),
+		slog.String("request", maskSensitiveJSON(params.RequestBody)),
+		slog.String("response", maskSensitiveJSON(params.ResponseBody.String())),
 	)
 }
 
@@ -136,7 +188,7 @@ func Logger(conf LoggerConfig, logger *log.Logger) gin.HandlerFunc {
 			path = path + "?" + raw
 		}
 
-		requestBody := snapshotRequestBody(c.Request)
+		requestBody := maskSensitiveJSON(snapshotRequestBody(c.Request))
 
 		// Start timer
 		start := time.Now()

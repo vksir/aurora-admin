@@ -31,12 +31,15 @@ func (h *modUpdateHelper) RegisterCronJob() {
 	registry.RegisterCronJob(ModUpdateCronJobName, time.Second*ModUpdateCronJobInterval, h.run)
 }
 
-// ModUpdateStatus 模组更新检测结果（API 对外展示用）
+// ModUpdateStatus 模组更新检测结果（API 对外展示用）。
+// 字段名与前端 `apps/web-ele/src/api/dontstarve/index.ts` 的 ModUpdateStatus 保持一致。
 type ModUpdateStatus struct {
 	WorkshopID     string `json:"workshop_id"`
 	Name           string `json:"name"`
-	CurrentUpdated int64  `json:"current_time_updated"`
-	RemoteUpdated  int64  `json:"remote_time_updated"`
+	CurrentUpdated int64  `json:"current_time"`
+	RemoteUpdated  int64  `json:"latest_time"`
+	// NeedUpdate 当前实现只返回需要更新的模组，因此恒为 true
+	NeedUpdate bool `json:"need_update"`
 }
 
 // modUpdate 待更新模组：DB 记录 + Workshop 最新详情
@@ -183,6 +186,7 @@ func (p *Plugin) CheckModUpdates(ctx context.Context) ([]ModUpdateStatus, error)
 			Name:           u.mod.Name,
 			CurrentUpdated: u.mod.TimeUpdated,
 			RemoteUpdated:  int64(u.detail.TimeUpdated),
+			NeedUpdate:     true,
 		})
 	}
 	return res, nil

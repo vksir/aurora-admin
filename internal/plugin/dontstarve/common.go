@@ -4,7 +4,10 @@ import (
 	"aurora-admin/pkg/steam"
 	"aurora-admin/pkg/workspace"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"aurora-admin/pkg/log"
 	"aurora-admin/pkg/util/fileutil"
@@ -25,6 +28,25 @@ const (
 	ModUpdateCronJobInterval  = 1800
 	AutoupdateNotifyInterval  = 300
 )
+
+// 服务启动完成的判定：DST 世界加载完成后会在分片输出里打印模拟运行/暂停标记。
+const (
+	shardActiveMarker = "Sim unpaused"
+	shardPausedMarker = "Sim paused"
+
+	// waitActiveTimeout 是等待启动完成的上限，首次生成世界、下载模组可能较慢。
+	waitActiveTimeout = 10 * time.Minute
+	// waitActivePollInterval 是等待期间检查分片进程是否仍存活的间隔。
+	waitActivePollInterval = time.Second
+)
+
+// shardFailureMarkers 是 DST 启动流程中明确表示无法启动的输出，
+// 命中后不必再等到超时（此时进程可能仍然存活）。
+var shardFailureMarkers = []string{
+	"Your Server Will Not Start",
+	"[Shard] Invalid shard id",
+	"[Shard] Missing shard name",
+}
 
 // 自动更新期间的游戏内公告文案
 const (
@@ -48,6 +70,29 @@ func clusterDir() string {
 
 func dstServPath() string {
 	return filepath.Join(programDir(), "bin64/dontstarve_dedicated_server_nullrenderer_x64")
+}
+
+// shardFIFOPath 返回分片控制台命名的 stdin 管道路径（relay 模式）。
+func shardFIFOPath(shard string) string {
+	return filepath.Join(programDir(), "run", "dst-"+strings.ToLower(shard)+".fifo")
+}
+
+// shardLogPath 返回分片 stdout/stderr 重定向的日志文件路径（relay 模式）。
+func shardLogPath(shard string) string {
+	return filepath.Join(programDir(), "log", "dst-"+strings.ToLower(shard)+".log")
+}
+
+// resetShardLog 清空分片服务日志，使日志只反映即将启动的这一次运行。
+func resetShardLog(shard string) error {
+	path := shardLogPath(shard)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o640)
+	if err != nil {
+		return err
+	}
+	return f.Close()
 }
 
 func appManifestPath() string {

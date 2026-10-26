@@ -37,7 +37,11 @@ var DontStarveClusterTokenTmpl string
 //go:embed dontstarve/template/Cluster/adminlist.txt.tmpl
 var DontStarveAdminListTmpl string
 
-//go:embed web/dist/*
+// 必须用 all: 前缀：embed 在递归匹配目录时会跳过以 _ / . 开头的文件，
+// 而前端构建产物中包含 lodash 相关的 _baseClone-*.js 等 chunk，
+// 漏嵌后会被 SPA fallback 当成 index.html 返回（text/html），导致模块加载失败。
+//
+//go:embed all:web/dist
 var StaticFS embed.FS
 
 func Cp(fs embed.FS, src string, dst string) error {

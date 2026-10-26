@@ -177,6 +177,20 @@ func (db *DB) DeleteArchive(ctx context.Context, id string) error {
 	return err
 }
 
+// AddArchiveMods 幂等地为存档追加模组关联（已存在的关联保持不变）。
+// 用于旧数据补全：早期版本的存档没有写入 archive_mods 关联。
+func (db *DB) AddArchiveMods(ctx context.Context, archiveID string, modIDs []string) error {
+	for _, modID := range modIDs {
+		_, err := db.Exec(ctx,
+			`INSERT OR IGNORE INTO archive_mods (archive_id, mod_id) VALUES (?, ?)`,
+			archiveID, modID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (db *DB) getArchiveMods(ctx context.Context, archiveID string) ([]*Mod, error) {
 	rows, err := db.Query(ctx,
 		`SELECT m.id, m.created_at, m.updated_at, m.workshop_id, m.name, m.description, m.image, m.time_created, m.time_updated, m.raw_config

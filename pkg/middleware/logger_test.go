@@ -113,3 +113,53 @@ func TestLoggerLargeRequestSkipped(t *testing.T) {
 	assert.Len(t, captured, 1)
 	assert.Equal(t, "<body too large to log>", captured[0].RequestBody)
 }
+
+func TestMaskSensitiveJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{
+			name:     "登录请求中的密码",
+			body:     `{"username":"admin","password":"secret123"}`,
+			expected: `{"password":"***","username":"admin"}`,
+		},
+		{
+			name:     "登录响应中的 token",
+			body:     `{"code":0,"data":{"accessToken":"eyJhbGciOi"}}`,
+			expected: `{"code":0,"data":{"accessToken":"***"}}`,
+		},
+		{
+			name:     "嵌套的集群密码",
+			body:     `{"cluster":{"clusterPassword":"pw","name":"c1"}}`,
+			expected: `{"cluster":{"clusterPassword":"***","name":"c1"}}`,
+		},
+		{
+			name:     "数组内的密钥",
+			body:     `[{"jwtSecret":"a"},{"name":"b"}]`,
+			expected: `[{"jwtSecret":"***"},{"name":"b"}]`,
+		},
+		{
+			name:     "非 JSON 原样返回",
+			body:     "plain text body",
+			expected: "plain text body",
+		},
+		{
+			name:     "空 body",
+			body:     "",
+			expected: "",
+		},
+		{
+			name:     "被截断的 JSON 整体丢弃",
+			body:     `{"password":"secret123"`,
+			expected: "<unparsable body, omitted>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, maskSensitiveJSON(tt.body))
+		})
+	}
+}

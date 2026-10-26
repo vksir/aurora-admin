@@ -7,15 +7,16 @@ import (
 	"aurora-admin/pkg/auth"
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"aurora-admin/pkg/log"
 	"aurora-admin/pkg/middleware"
 	"aurora-admin/pkg/util/errutil"
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func loadStaticRouters(e *gin.Engine, apiDocHost string) {
@@ -27,25 +28,37 @@ func loadStaticRouters(e *gin.Engine, apiDocHost string) {
 	e.StaticFS("/assets", distHttpFS)
 
 	e.NoRoute(func(c *gin.Context) {
-		path := c.Request.URL.Path
+		reqPath := c.Request.URL.Path
 
-		file, err := distHttpFS.Open(strings.TrimPrefix(path, "/"))
+		file, err := distHttpFS.Open(strings.TrimPrefix(reqPath, "/"))
 		if err == nil {
 			defer log.Close(file)
 			http.FileServer(distHttpFS).ServeHTTP(c.Writer, c.Request)
 			return
 		}
 
-		if !strings.HasPrefix(path, "/api") {
-			indexFile, err := distHttpFS.Open("index.html")
-			if err != nil {
-				c.String(http.StatusNotFound, "Index Not Found")
-				return
-			}
-			defer log.Close(indexFile)
-			stat, _ := indexFile.Stat()
-			http.ServeContent(c.Writer, c.Request, "index.html", stat.ModTime(), indexFile)
+		if strings.HasPrefix(reqPath, "/api") {
+			return
 		}
+
+		// 静态资源缺失时返回真正的 404，避免 SPA fallback 把 index.html
+		// (text/html) 当作 js/css 返回，触发浏览器的严格 MIME 校验报错
+		if path.Ext(reqPath) != "" {
+			c.String(http.StatusNotFound, "Not Found")
+			return
+		}
+
+		indexFile, err := distHttpFS.Open("index.html")
+		if err != nil {
+			c.String(http.StatusNotFound, "Index Not Found")
+			return
+		}
+		defer log.Close(indexFile)
+		stat, _ := indexFile.Stat()
+		// index.html 引用的是带 hash 的构建产物，一旦被浏览器缓存，
+		// 重新发布后旧 index 会指向已删除的 chunk，必须强制重新验证
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		http.ServeContent(c.Writer, c.Request, "index.html", stat.ModTime(), indexFile)
 	})
 }
 

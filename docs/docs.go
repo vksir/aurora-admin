@@ -1131,6 +1131,30 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/dst/service/log/stream": {
+            "get": {
+                "description": "以 SSE 持续推送各分片服务端进程的 stdout/stderr；连接建立时回灌最近 300 行",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "dontstarve_service"
+                ],
+                "summary": "服务日志流",
+                "responses": {
+                    "200": {
+                        "description": "SSE 事件流：meta / line / reset / ping",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {}
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1149,14 +1173,18 @@ const docTemplate = `{
         "dontstarve.ModUpdateStatus": {
             "type": "object",
             "properties": {
-                "current_time_updated": {
+                "current_time": {
+                    "type": "integer"
+                },
+                "latest_time": {
                     "type": "integer"
                 },
                 "name": {
                     "type": "string"
                 },
-                "remote_time_updated": {
-                    "type": "integer"
+                "need_update": {
+                    "description": "NeedUpdate 当前实现只返回需要更新的模组，因此恒为 true",
+                    "type": "boolean"
                 },
                 "workshop_id": {
                     "type": "string"
@@ -1336,12 +1364,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
+	Version:          "1.0",
+	Host:             "0.0.0.0:5800",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Aurora Admin",
+	Description:      "Aurora Admin API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

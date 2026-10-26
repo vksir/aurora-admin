@@ -49,6 +49,11 @@ func Run(config *cfg.Config, state *cache.State, db *store.DB) {
 
 	service.Register(dontstarve.PluginName, app.dontstarvePlugin.Service())
 
+	// 面板重启后尝试接管仍在运行的游戏服务，避免出现只能看不能管的孤儿进程
+	if err := app.dontstarvePlugin.AdoptRuntime(context.Background()); err != nil {
+		log.Warn("adopt running server processes failed", "err", err)
+	}
+
 	srv := serveHttp(app)
 
 	sigChan := make(chan os.Signal, 1)

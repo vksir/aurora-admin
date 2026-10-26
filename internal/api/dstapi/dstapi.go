@@ -1,6 +1,7 @@
 package dstapi
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -68,6 +69,9 @@ func (d *Api) Load(g *gin.RouterGroup) {
 		dst.POST("/console/announce", d.Announce)
 		dst.POST("/console/regenerate", d.Regenerate)
 		dst.POST("/console/rollback", d.Rollback)
+
+		// Service log
+		dst.GET("/service/log/stream", d.StreamServiceLog)
 	}
 }
 
@@ -112,7 +116,9 @@ func (d *Api) UpdateConfig(c *gin.Context) {
 // @Router			/api/v1/dst/archives/{id} [get]
 func (d *Api) GetArchive(c *gin.Context) {
 	id := c.Param("id")
-	res, err := d.db.GetArchive(c, id)
+	// 走 plugin.GetArchive：旧存档在 archive_mods 为空时会按存档目录的
+	// Master/modoverrides.lua 回填模组关联（只补不删）
+	res, err := d.plugin.GetArchive(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
@@ -674,5 +680,38 @@ func (d *Api) DownloadEnabledArchive(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
+	}
+}
+
+// StreamServiceLog
+// @Summary			服务日志流
+// @Description		以 SSE 持续推送各分片服务端进程的 stdout/stderr；连接建立时回灌最近 300 行
+// @Tags			dontstarve_service
+// @Produce			text/event-stream
+// @Success			200 {string} string "SSE 事件流：meta / line / reset / ping"
+// @Failure			401 {object} any
+// @Router			/api/v1/dst/service/log/stream [get]
+func (d *Api) StreamServiceLog(c *gin.Context) {
+	// 心跳与日志行都由 StreamLog 的同一个 goroutine 写出，避免 gin Writer 并发写
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	// 关闭 nginx 等反向代理的缓冲，否则日志会被攒起来一次性吐出
+	c.Header("X-Accel-Buffering", "no")
+
+	err := d.plugin.StreamLog(c.Request.Context(), func(ev dontstarve.LogEvent) error {
+		if ev.Type == dontstarve.LogEventTypePing {
+			_, err := io.WriteString(c.Writer, ": ping\n\n")
+			if err != nil {
+				return err
+			}
+		} else {
+			c.SSEvent(string(ev.Type), ev)
+		}
+		c.Writer.Flush()
+		return nil
+	})
+	if err != nil && !errors.Is(err, context.Canceled) {
+		log.DefaultLogger().Debug("service log stream closed", "err", err)
 	}
 }

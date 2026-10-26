@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync/atomic"
 
 	_ "modernc.org/sqlite"
 )
@@ -20,9 +21,16 @@ func Open(path string) (*DB, error) {
 	return openDSN(dsn)
 }
 
+// OpenMemory 打开一个内存数据库（仅用于测试）。
+// 每次调用使用独立的库名：命名内存库在同进程内是共享的，若固定库名，
+// 不同测试会看到彼此写入的数据而互相污染。
 func OpenMemory() (*DB, error) {
-	return openDSN("file:ent?mode=memory&cache=shared&_pragma=foreign_keys(1)")
+	name := fmt.Sprintf("file:ent-%d?mode=memory&cache=shared&_pragma=foreign_keys(1)",
+		atomic.AddInt64(&memoryDBCounter, 1))
+	return openDSN(name)
 }
+
+var memoryDBCounter int64
 
 func openDSN(dsn string) (*DB, error) {
 	db, err := sql.Open("sqlite", dsn)
