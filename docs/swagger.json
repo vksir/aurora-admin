@@ -1,13 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Aurora Admin API",
-        "title": "Aurora Admin",
-        "contact": {},
-        "version": "1.0"
+        "contact": {}
     },
-    "host": "0.0.0.0:5800",
-    "basePath": "/api/v1",
     "paths": {
         "/api/v1/dst/admins": {
             "get": {
@@ -814,6 +809,182 @@
                         "schema": {}
                     }
                 }
+            },
+            "post": {
+                "description": "通过创意工坊 ID 添加模组。raw_config 可选：缺省时新模组使用默认配置，\n已存在的模组保留原配置；支持完整配置块、整个 modoverrides.lua 内容或仅模组内部配置项三种形式",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_mod"
+                ],
+                "summary": "添加模组",
+                "parameters": [
+                    {
+                        "description": "body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dstapi.CreateModRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/comety.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/store.Mod"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/api/v1/dst/mods/check-update": {
+            "post": {
+                "description": "对比 Workshop 与本地记录，返回需要更新的模组列表（不执行更新）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_mod"
+                ],
+                "summary": "检测模组更新",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/comety.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dontstarve.ModUpdateStatus"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/api/v1/dst/mods/update": {
+            "post": {
+                "description": "异步触发模组更新流程（检测-\u003e下载-\u003e安装-\u003e无人时重启）。有玩家在线时等待玩家下线",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_mod"
+                ],
+                "summary": "触发模组更新",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/comety.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/api/v1/dst/mods/upload": {
+            "post": {
+                "description": "解析上传的 modoverrides.lua 文件，导入其中所有启用的模组（enabled = true）；\n已存在的模组会更新配置与元信息",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dontstarve_mod"
+                ],
+                "summary": "上传 modoverrides.lua 导入模组",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "modoverrides.lua 文件",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/comety.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/store.Mod"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
             }
         },
         "/api/v1/dst/mods/{id}": {
@@ -964,10 +1135,43 @@
                 }
             }
         },
+        "dontstarve.ModUpdateStatus": {
+            "type": "object",
+            "properties": {
+                "current_time_updated": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "remote_time_updated": {
+                    "type": "integer"
+                },
+                "workshop_id": {
+                    "type": "string"
+                }
+            }
+        },
         "dstapi.AnnounceRequest": {
             "type": "object",
             "properties": {
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "dstapi.CreateModRequest": {
+            "type": "object",
+            "required": [
+                "workshop_id"
+            ],
+            "properties": {
+                "raw_config": {
+                    "description": "模组配置，可选。支持完整配置块、整个 modoverrides.lua 内容或仅模组内部配置项；缺省使用默认配置",
+                    "type": "string"
+                },
+                "workshop_id": {
+                    "description": "创意工坊 ID（纯数字），如 1392778117",
                     "type": "string"
                 }
             }

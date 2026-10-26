@@ -1,12 +1,16 @@
 package dstapi
 
 import (
+	"errors"
+	"io"
+	"net/http"
+	"strings"
+
 	"aurora-admin/internal/entity/comety"
 	"aurora-admin/internal/entity/dstety"
 	"aurora-admin/internal/plugin/dontstarve"
 	"aurora-admin/internal/store"
 	"aurora-admin/pkg/registry"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"aurora-admin/pkg/log"
@@ -46,9 +50,11 @@ func (d *Api) Load(g *gin.RouterGroup) {
 
 		// Mods
 		dst.GET("/mods", d.ListMod)
+		dst.POST("/mods", d.CreateMod)
 		dst.GET("/mods/:id", d.GetMod)
 		dst.PUT("/mods/:id", d.UpdateMod)
 		dst.DELETE("/mods/:id", d.DeleteMod)
+		dst.POST("/mods/upload", d.UploadModOverrides)
 		dst.POST("/mods/check-update", d.CheckModUpdate)
 		dst.POST("/mods/update", d.UpdateMods)
 
@@ -279,6 +285,98 @@ func (d *Api) DownloadArchive(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
 		return
 	}
+}
+
+// CreateModRequest 按创意工坊 ID 添加模组的请求。
+type CreateModRequest struct {
+	// 创意工坊 ID（纯数字），如 1392778117
+	WorkshopID string `json:"workshop_id" binding:"required"`
+	// 模组配置，可选。支持完整配置块、整个 modoverrides.lua 内容或仅模组内部配置项；缺省使用默认配置
+	RawConfig string `json:"raw_config"`
+}
+
+// isClientError 判断是否为客户端输入错误（应返回 400 而非 500）。
+func isClientError(err error) bool {
+	return errors.Is(err, dontstarve.ErrInvalidWorkshopID) ||
+		errors.Is(err, dontstarve.ErrModNotFound) ||
+		errors.Is(err, dontstarve.ErrInvalidModConfig) ||
+		errors.Is(err, dontstarve.ErrNoEnabledMods)
+}
+
+// CreateMod
+// @Summary			添加模组
+// @Description		通过创意工坊 ID 添加模组。raw_config 可选：缺省时新模组使用默认配置，
+// @Description		已存在的模组保留原配置；支持完整配置块、整个 modoverrides.lua 内容或仅模组内部配置项三种形式
+// @Tags			dontstarve_mod
+// @Accept			json
+// @Produce			json
+// @Param			request body CreateModRequest true "body"
+// @Success			200 {object} comety.Response{data=store.Mod}
+// @Failure			400 {object} any
+// @Failure			500 {object} any
+// @Router			/api/v1/dst/mods [post]
+func (d *Api) CreateMod(c *gin.Context) {
+	var req CreateModRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
+		return
+	}
+	req.WorkshopID = strings.TrimSpace(req.WorkshopID)
+
+	res, err := d.plugin.CreateMod(c, req.WorkshopID, req.RawConfig)
+	if err != nil {
+		if isClientError(err) {
+			c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, comety.Response{Data: res})
+}
+
+// UploadModOverrides
+// @Summary			上传 modoverrides.lua 导入模组
+// @Description		解析上传的 modoverrides.lua 文件，导入其中所有启用的模组（enabled = true）；
+// @Description		已存在的模组会更新配置与元信息
+// @Tags			dontstarve_mod
+// @Accept			multipart/form-data
+// @Produce			json
+// @Param			file formData file true "modoverrides.lua 文件"
+// @Success			200 {object} comety.Response{data=[]store.Mod}
+// @Failure			400 {object} any
+// @Failure			500 {object} any
+// @Router			/api/v1/dst/mods/upload [post]
+func (d *Api) UploadModOverrides(c *gin.Context) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
+		return
+	}
+	defer log.Close(file)
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
+		return
+	}
+
+	res, err := d.plugin.UploadModOverrides(c, content)
+	if err != nil {
+		if isClientError(err) {
+			c.JSON(http.StatusBadRequest, comety.Response{Message: err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, comety.Response{Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, comety.Response{Data: res})
 }
 
 // ListMod

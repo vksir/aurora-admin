@@ -1,4 +1,3 @@
-basePath: /api/v1
 definitions:
   comety.Response:
     properties:
@@ -8,10 +7,32 @@ definitions:
       message:
         type: string
     type: object
+  dontstarve.ModUpdateStatus:
+    properties:
+      current_time_updated:
+        type: integer
+      name:
+        type: string
+      remote_time_updated:
+        type: integer
+      workshop_id:
+        type: string
+    type: object
   dstapi.AnnounceRequest:
     properties:
       message:
         type: string
+    type: object
+  dstapi.CreateModRequest:
+    properties:
+      raw_config:
+        description: 模组配置，可选。支持完整配置块、整个 modoverrides.lua 内容或仅模组内部配置项；缺省使用默认配置
+        type: string
+      workshop_id:
+        description: 创意工坊 ID（纯数字），如 1392778117
+        type: string
+    required:
+    - workshop_id
     type: object
   dstapi.RollbackRequest:
     properties:
@@ -107,12 +128,8 @@ definitions:
       workshop_id:
         type: string
     type: object
-host: 0.0.0.0:5800
 info:
   contact: {}
-  description: Aurora Admin API
-  title: Aurora Admin
-  version: "1.0"
 paths:
   /api/v1/dst/admins:
     get:
@@ -610,6 +627,40 @@ paths:
       summary: 获取模组列表
       tags:
       - dontstarve_mod
+    post:
+      consumes:
+      - application/json
+      description: |-
+        通过创意工坊 ID 添加模组。raw_config 可选：缺省时新模组使用默认配置，
+        已存在的模组保留原配置；支持完整配置块、整个 modoverrides.lua 内容或仅模组内部配置项三种形式
+      parameters:
+      - description: body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dstapi.CreateModRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/comety.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/store.Mod'
+              type: object
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 添加模组
+      tags:
+      - dontstarve_mod
   /api/v1/dst/mods/{id}:
     delete:
       consumes:
@@ -691,6 +742,85 @@ paths:
           description: Internal Server Error
           schema: {}
       summary: 更新模组
+      tags:
+      - dontstarve_mod
+  /api/v1/dst/mods/check-update:
+    post:
+      consumes:
+      - application/json
+      description: 对比 Workshop 与本地记录，返回需要更新的模组列表（不执行更新）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/comety.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dontstarve.ModUpdateStatus'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 检测模组更新
+      tags:
+      - dontstarve_mod
+  /api/v1/dst/mods/update:
+    post:
+      consumes:
+      - application/json
+      description: 异步触发模组更新流程（检测->下载->安装->无人时重启）。有玩家在线时等待玩家下线
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/comety.Response'
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 触发模组更新
+      tags:
+      - dontstarve_mod
+  /api/v1/dst/mods/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: |-
+        解析上传的 modoverrides.lua 文件，导入其中所有启用的模组（enabled = true）；
+        已存在的模组会更新配置与元信息
+      parameters:
+      - description: modoverrides.lua 文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/comety.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/store.Mod'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: 上传 modoverrides.lua 导入模组
       tags:
       - dontstarve_mod
 swagger: "2.0"
