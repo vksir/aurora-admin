@@ -1,0 +1,40 @@
+# air 热重载配置（https://github.com/air-verse/air）
+# 用法：air  （需先 go install github.com/air-verse/air@latest）
+# 修改 Go 代码后自动重新编译并重启服务，类似前端的 vite 热更新体验。
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# 编译命令：产物放 tmp/，避免污染工作区
+cmd = "go build -o ./tmp/main.exe ."
+# 运行入口：
+# -w 显式指定 workspace，确保连接 .workspace/aurora-admin 的数据库，
+# 而不是 air 的 tmp/ 目录（可执行文件所在目录会被当作默认 workspace）
+entrypoint = ["./tmp/main.exe", "serve", "-w", ".workspace/aurora-admin"]
+# 构建失败的抖动延迟（ms），避免保存瞬间半成品文件触发编译
+delay = 1000
+# 只监听 Go 源码变化
+include_ext = ["go"]
+exclude_regex = ["_test\\.go$"]
+# 排除：workspace（数据库/日志变化不应触发重启）、前端仓库、前端产物等
+exclude_dir = ["assets", "aurora-admin", "aurora-admin-web", "docs", "prompt", "tmp", "vendor", ".scratch", ".workspace"]
+# 编译失败后继续监听，修复代码自动重试
+rerun = true
+rerun_delay = 2000
+# 杀旧进程前的等待（给优雅退出留时间，main.go 的 shutdown 超时是 10s）
+kill_delay = "5s"
+
+[log]
+time = true
+main_only = false
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+# air 退出时清理 tmp
+clean_on_exit = true

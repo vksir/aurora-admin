@@ -3,3 +3,4 @@
 assets/web/*
 .scratch/
 .workspace
+tmp/
