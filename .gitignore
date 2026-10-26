@@ -5,3 +5,4 @@ assets/web/*
 .workspace
 tmp/
 aurora-admin/
+deploy-out/
